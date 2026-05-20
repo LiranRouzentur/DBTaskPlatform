@@ -143,13 +143,10 @@ The runtime flow:
 
 ### So how do you actually add a third task type?
 
-Two paths, both touch zero existing code in controllers, generic services, the workflow engine, or any other task type's module:
 
-**Path A — pure data (recommended).** Insert rows into `TaskTypes`, `StatusDefinitions`, and `StatusFieldSpecs` (via an EF migration, a SQL script, or even SSMS). Restart the API. The registry reloads, the workflow engine handles the new type, and the Angular UI renders its create form and per-status fields automatically from the metadata endpoint.
+**Pure data.** Insert rows into `TaskTypes`, `StatusDefinitions`, and `StatusFieldSpecs` (via an EF migration, a SQL script, or even SSMS). Restart the API. The registry reloads, the workflow engine handles the new type, and the Angular UI renders its create form and per-status fields automatically from the metadata endpoint.
 
-**Path B — code-as-seed.** Add one entry to [`DatabaseSeeder`](server/data/persistence/DatabaseSeeder.cs) describing the new type, its ordered statuses, the final-status marker, and the field specs each status requires. The seeder is the only place that knows shape-by-shape what the demo types look like, and it is the only file you edit — everything else discovers the new type at runtime via the registry.
 
-> **Runtime caveat.** `TaskTypeRegistry` is a singleton, in-memory cache populated once at app startup (see [server/data/workflow/TaskTypeRegistry.cs](server/data/workflow/TaskTypeRegistry.cs)). Inserting rows into the metadata tables while the API is running has **no effect** until the API process is restarted. The Marketing task type (gated behind the `SeedExtraTypes=true` config flag) is the worked example demonstrating the full Path B without touching any other file in the codebase.
 
 
 ### Why this passes the grading bar
