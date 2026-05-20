@@ -1,7 +1,5 @@
 :host { display: block; }
 
-.alert-slot { margin-bottom: var(--space-4); }
-
 .section {
   display: flex;
   flex-direction: column;
@@ -13,10 +11,6 @@
   font-size: var(--text-md);
   font-weight: 600;
   letter-spacing: var(--tracking-tight);
-}
-.section-sub {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
 }
 
 .divider {
