@@ -21,7 +21,7 @@ Install these on the host machine before running the spin-up script:
 | **Node.js + npm** | Node **20.11+** or **22+** (Angular 19 requirement) | The script runs `npm ci` / `npm run build` on the host |
 
 
-> SQL Server does **not** need to be installed locally — it runs inside Docker on port `1433`. Credentials live in the committed [.env](.env) file (demo project; not for production).
+> SQL Server does **not** need to be installed locally — it runs inside Docker on port `1433`. Credentials live in the committed [.env] file (demo project; not for production).
 
 That is the complete list. No global Angular CLI, no SSMS, no LocalDB.
 
