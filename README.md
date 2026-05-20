@@ -59,7 +59,7 @@ When the final `OK` line prints, three containers are running and the following 
 | `http://localhost:5028/health` | Liveness probe (200 = ready) |
 | `http://localhost:5028/scalar/v1` | **Scalar** interactive API docs (try every endpoint here) |
 | `http://localhost:5028/openapi/v1.json` | Raw OpenAPI document |
-| `localhost:1433` | **SQL Server** — connect with the credentials in [.env](.env) (user `sa` / password `Demo!Password123`) using SSMS, Azure Data Studio, or `sqlcmd` |
+| `localhost:1433` | **SQL Server** — connect with the credentials in [.env](.env) using SSMS, Azure Data Studio, or `sqlcmd` |
 
 The database is seeded with:
 
