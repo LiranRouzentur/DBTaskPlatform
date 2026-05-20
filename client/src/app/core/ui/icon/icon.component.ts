@@ -112,12 +112,16 @@ export class IconComponent {
   // ─── Computed ────────────────────────────────────────────────────────────
   /** Fully-formed SVG string trusted via DomSanitizer — bypass is safe because content comes from a static, typed map. */
   protected readonly markup = computed<SafeHtml>(() => {
+    // Lookup is keyed on the typed name; `?? ''` is a defensive fallback (the type system should prevent misses).
     const inner = ICONS[this.name()] ?? '';
+    // Snapshot inputs into locals to keep the template-string interpolations readable.
     const size = this.size();
     const label = this.label();
+    // Decorative vs labelled fork — provide either `role=img + aria-label` or `aria-hidden`, never both.
     const labelAttrs = label
       ? `role="img" aria-label="${escapeAttr(label)}"`
       : `aria-hidden="true"`;
+    // Bypass is safe: `inner` comes from the static `ICONS` map and `label` is attribute-escaped — no user HTML enters the string.
     return this.sanitizer.bypassSecurityTrustHtml(
       `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${labelAttrs}>${inner}</svg>`,
     );
@@ -126,6 +130,7 @@ export class IconComponent {
 
 /** Minimal HTML-attribute escaping for the `aria-label` value before it gets serialised into the SVG string. */
 function escapeAttr(value: string): string {
+  // Order matters: replace `&` first so we don't double-escape entities introduced by the later substitutions.
   return value
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')

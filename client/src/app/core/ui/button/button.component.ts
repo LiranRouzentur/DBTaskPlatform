@@ -59,8 +59,11 @@ export class ButtonComponent {
 
   /** Composes the host class list from variant + size + optional `btn-block`. */
   protected readonly classes = computed(() => {
+    // Base + variant + size are always present — kept as separate classes so CSS can combine them freely.
     const parts = ['btn', `btn-${this.variant()}`, `btn-${this.size()}`];
+    // `btn-block` is opt-in; stretching is the exception, not the default.
     if (this.block()) parts.push('btn-block');
+    // Single space-joined string for the template's `[class]` binding.
     return parts.join(' ');
   });
 }

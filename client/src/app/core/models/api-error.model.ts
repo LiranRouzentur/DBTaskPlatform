@@ -59,8 +59,11 @@ export interface ApiError {
 
 /** Type-guard so `GlobalErrorHandler` can distinguish our typed errors from raw Errors. */
 export function isApiError(value: unknown): value is ApiError {
+  // Reject primitives and null up front — `typeof null === 'object'` so the explicit null check is required.
   if (typeof value !== 'object' || value === null) return false;
+  // Narrow to a Partial so we can probe required fields without TS complaints (still `unknown` at runtime).
   const candidate = value as Partial<ApiError>;
+  // Require the three load-bearing fields. Anything missing one is treated as a raw Error so the global handler logs it instead of trusting it.
   return (
     typeof candidate.kind === 'string' &&
     typeof candidate.status === 'number' &&

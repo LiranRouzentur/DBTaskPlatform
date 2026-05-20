@@ -89,65 +89,83 @@ export class CreateTaskFacade {
   // ─── Public API / UI Actions ─────────────────────────────────────────────
   /** Type-picker click handler — routed through `setControl` for typed safety + dirty tracking. */
   pickType(id: number): void {
+    // Centralised setter handles markAsDirty + emit semantics so behavior stays consistent across pickers.
     setControl(this.form.controls.taskTypeId, id);
   }
 
   /** Assignee-picker click handler — same pattern as `pickType`. */
   pickAssignee(id: number): void {
+    // Same helper — both pickers share the dirty-tracking contract.
     setControl(this.form.controls.initialAssignedUserId, id);
   }
 
   /** Submit click. Opens the "create?" confirm dialog when the form is valid, else marks-touched to show errors. */
   onSubmit(): void {
+    // Gating uses canSubmit so loading state also blocks (double-click guard).
     if (!this.canSubmit()) {
+      // Make errors visible if the user clicked submit on a pristine-invalid form.
       this.form.markAllAsTouched();
       return;
     }
+    // Open the create-confirm; actual API call happens after the user confirms.
     this.dialog.open('create');
   }
 
   /** Cancel button — prompt for discard if dirty, otherwise route back immediately. */
   requestCancel(): void {
+    // Prompt only when there's something to lose — keeps clean cancels frictionless.
     if (this.form.dirty) {
       this.dialog.open('cancel');
       return;
     }
+    // No edits to lose — route back immediately.
     this.routeBack();
   }
 
   /** Confirm-dialog OK handler — dispatches based on which dialog was open. */
   async confirmDialog(): Promise<void> {
+    // Capture intent BEFORE closing the dialog so the dispatch below knows which branch to take.
     const kind = this.dialog.active();
+    // Close immediately so the dialog doesn't linger during the async create call.
     this.dialog.close();
     if (kind === 'create') {
+      // Async path — drives the network call and post-success redirect.
       await this.executeCreate();
     } else if (kind === 'cancel') {
+      // User confirmed discarding edits — route back without saving.
       this.routeBack();
     }
   }
 
   /** Confirm-dialog Cancel handler — close the dialog and keep state. */
   cancelDialog(): void {
+    // No state change — preserve form values so the user can continue editing.
     this.dialog.close();
   }
 
   /** Closes the modal by routing back to `/tasks` — `skipLocationChange` keeps the URL stable (frontend.md §5). */
   routeBack(): void {
+    // skipLocationChange — URL-stable modal pattern (frontend.md §5 / ADR-10).
     this.router.navigate(['/tasks'], { skipLocationChange: true });
   }
 
   // ─── Private methods ─────────────────────────────────────────────────────
   /** Actual creation + redirect. On success we deep-link straight into the change-status modal for the new id. */
   private async executeCreate(): Promise<void> {
+    // Snapshot raw form values — includes disabled controls (defensive for future flows).
     const value = this.form.getRawValue();
+    // Store handles list patching + detail cache; 422 fieldErrors flow back through bindStoreErrorToast's callback.
     const result = await this.store.create({
       taskTypeId: value.taskTypeId,
       initialAssignedUserId: value.initialAssignedUserId,
     });
+    // Null result = error (already toasted) — keep modal open so the user can retry.
     if (!result) return;
+    // Look up the user object so the toast can name them; fall back to a generic word if missing.
     const assigneeName =
       this.store.userById().get(value.initialAssignedUserId)?.fullName ?? 'assignee';
     this.toasts.success(`Created and assigned to ${assigneeName}.`, 'Task created');
+    // Deep-link into the change-status modal for the freshly-created task; skipLocationChange keeps URL stable.
     this.router.navigate(['/tasks', result.id, 'change-status'], {
       skipLocationChange: true,
     });

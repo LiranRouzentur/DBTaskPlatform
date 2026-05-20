@@ -46,21 +46,30 @@ export class TopBarComponent {
 
   /** Relabels the Tasks count to "Visible tasks" whenever any filter is active, signalling the number isn't a true total. */
   protected readonly tasksLabel = computed(() => {
+    // Active user filter (null = All Users) — drives label switching.
     const u = this.store.currentUserId();
+    // Active task-type filter (null = All Types) — drives label switching.
     const t = this.store.typeFilter();
+    // Both filters off → the count reflects the entire workspace, so the plain "Tasks" label is accurate.
     if (u === null && t === null) return 'Tasks';
+    // Otherwise the count is filtered — relabel so users don't read it as the workspace total.
     return 'Visible tasks';
   });
   /** Tooltip describing which filters are in play — joined with a middle-dot or a generic "all tasks" string. */
   protected readonly tasksTitle = computed(() => {
+    // Accumulator for the human filter description; ordered: assignee first, then type.
     const parts: string[] = [];
+    // Resolve the active user object (null when "All Users") so we can name them in the tooltip.
     const u = this.store.currentUser();
     if (u) parts.push(`Assignee: ${u.fullName}`);
+    // Active task-type id (null = no type filter).
     const typeId = this.store.typeFilter();
     if (typeId !== null) {
+      // Lookup uses the O(1) map maintained in the store; falls through silently if metadata is missing.
       const type = this.store.taskTypeById().get(typeId);
       if (type) parts.push(`Type: ${type.name}`);
     }
+    // No active filters → render the generic message instead of an empty tooltip.
     return parts.length === 0 ? 'All tasks across the workspace' : parts.join(' · ');
   });
 }

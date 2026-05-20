@@ -46,6 +46,7 @@ export class IconButtonComponent {
 
   /** Composes the host class list — variant + size are kept as separate axes for CSS combinatorics. */
   protected readonly classes = computed(() =>
+    // Three classes: base for layout, variant for colour treatment, size for padding/font metrics.
     `icon-btn icon-btn-${this.variant()} icon-btn-${this.size()}`,
   );
 }

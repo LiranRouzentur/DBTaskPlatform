@@ -11,12 +11,15 @@ import { FrontendLogger } from '../logging/frontend-logger.service';
  * Logs structured request outcomes (method, path, status, duration, correlationId) for triage.
  */
 export const loggingInterceptor: HttpInterceptorFn = (req, next) => {
+  // Resolved inside the functional interceptor (no class instance) — Angular's inject() runs in the interceptor context.
   const logger = inject(FrontendLogger);
   // performance.now is monotonic — safe for duration measurement even under clock skew.
   const start = performance.now();
+  // Empty string fallback keeps the log shape stable when correlationIdInterceptor is somehow bypassed.
   const correlationId = req.headers.get('X-Correlation-Id') ?? '';
 
   return next(req).pipe(
+    // tap is non-mutating — observes both branches without altering the stream.
     tap({
       next: (event) => {
         // Only log on the final HttpResponse, not intermediate HttpEvents (e.g. upload progress).
@@ -31,6 +34,7 @@ export const loggingInterceptor: HttpInterceptorFn = (req, next) => {
         }
       },
       error: (err: unknown) => {
+        // errorInterceptor sits OUTSIDE this one, so by the time tap.error fires, err is already a typed ApiError.
         const apiError = err as Partial<ApiError>;
         logger.error({
           method: req.method,

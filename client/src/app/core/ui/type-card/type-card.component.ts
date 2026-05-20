@@ -35,7 +35,9 @@ export class TypeCardComponent {
 
   /** Pluralised label like "1 stage" / "4 stages" — derived from the number of statuses on this type. */
   protected readonly stagesLabel = computed(() => {
+    // Stage count is the workflow length; cached locally to keep the conditional readable.
     const n = this.type().statuses.length;
+    // Branch on 1 to avoid the "1 stages" grammar bug; everything else uses the plural form.
     return n === 1 ? '1 stage' : `${n} stages`;
   });
 }

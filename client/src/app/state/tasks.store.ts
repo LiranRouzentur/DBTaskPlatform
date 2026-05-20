@@ -68,7 +68,9 @@ export const TasksStore = signalStore(
     closedTasks: computed(() => state.tasks().filter((t) => t.isClosed)),
     /** Resolves `currentUserId` to the full User object; `null` when "All Users" or id no longer exists. */
     currentUser: computed(() => {
+      // Active filter id — `null` means "All Users", so skip the lookup.
       const id = state.currentUserId();
+      // Defensive lookup — id might reference a user that's since been removed; fall through to null in that case.
       return id ? state.users().find((u) => u.id === id) ?? null : null;
     }),
     /** True when no specific user is selected (the "All Users" pseudo-id). Drives the user-picker label. */
@@ -76,13 +78,16 @@ export const TasksStore = signalStore(
 
     /** O(1) lookup map of task-type id → metadata; avoids repeated linear .find() in templates and lists. */
     taskTypeById: computed(() => {
+      // Fresh Map each computation — signals treat the new identity as a value change for downstream consumers.
       const map = new Map<number, TaskTypeMetadata>();
+      // Single pass over the metadata array; rebuilt only when taskTypes() changes.
       for (const t of state.taskTypes()) map.set(t.id, t);
       return map;
     }),
 
     /** O(1) lookup map of user id → User; avoids repeated linear .find() when rendering assignee badges. */
     userById: computed(() => {
+      // Same fresh-Map pattern as taskTypeById — new identity signals "this map changed".
       const map = new Map<number, User>();
       for (const u of state.users()) map.set(u.id, u);
       return map;
@@ -116,15 +121,21 @@ export const TasksStore = signalStore(
       /** List fetch with stale-response guard: only the most recent invocation is allowed to patch state.
        *  Prevents a slow response from an earlier filter from clobbering a faster response from a newer filter. */
       const fetchListLatest = async (): Promise<void> => {
+        // Capture our sequence number so we can detect whether a newer fetch superseded us.
         const mySeq = ++fetchSeq;
+        // Flip loading + clear any prior error so the UI surfaces the in-flight state.
         patchState(store, { loading: true, error: null });
         try {
+          // Snapshot filters at call time — currentFilters() reads signals which may change during the await.
           const tasks = await fetchList(currentFilters());
           // Bail if a newer fetch has started — its response will own the state.
           if (mySeq !== fetchSeq) return;
+          // Commit the fresh task list and clear loading.
           patchState(store, { tasks, loading: false });
         } catch (err) {
+          // Same stale-guard for the error path — a newer fetch may have already succeeded.
           if (mySeq !== fetchSeq) return;
+          // Cast — the http layer guarantees thrown values are ApiError.
           const apiErr = err as ApiError;
           patchState(store, { error: apiErr, loading: false });
           toasts.fromApiError(apiErr);
@@ -133,6 +144,7 @@ export const TasksStore = signalStore(
 
       /** Plain refetch used after 409 recovery — no seq guard, no error toast (the caller controls UX). */
       const refreshList = async (): Promise<void> => {
+        // No seq guard — this is the recovery path after a 409; we want the freshest data unconditionally.
         const tasks = await fetchList(currentFilters());
         patchState(store, { tasks, loading: false, error: null });
       };
@@ -140,6 +152,7 @@ export const TasksStore = signalStore(
       /** 409 "concurrent-modification" auto-recovery: refetch the list, show an "out of sync" toast, swallow the error.
        *  Returns true if the error was handled here so the caller skips its own error-surfacing path. */
       const handleConcurrentModification = async (err: ApiError): Promise<boolean> => {
+        // Only "concurrent-modification" 409s are auto-recovered — other 409s (workflow rule violations) bubble.
         if (err.kind !== 'conflict' || err.rule !== 'concurrent-modification') return false;
         try {
           await refreshList();
@@ -156,8 +169,11 @@ export const TasksStore = signalStore(
 
       /** Returns a new tasks array with `item` upserted (replace by id, or append if new). Pure — no mutation. */
       const patchListWith = (item: TaskListItem): readonly TaskListItem[] => {
+        // Find existing position; -1 means the item is brand-new (just-created task).
         const idx = store.tasks().findIndex((t) => t.id === item.id);
+        // New item → append; preserves order so the new row lands at the bottom (sort happens in the facade).
         if (idx === -1) return [...store.tasks(), item];
+        // Existing item → clone the array and overwrite by index for a stable identity-change.
         const next = store.tasks().slice();
         next[idx] = item;
         return next;
@@ -186,9 +202,12 @@ export const TasksStore = signalStore(
         call: () => Promise<TaskDetail>,
         opts: MutationOptions = {},
       ): Promise<TaskDetail | null> => {
+        // Defaults — create() flips both off; status changes / close / updateStep keep both on.
         const { recoverOn409 = true, surfaceErrors = true } = opts;
+        // Flip loading + clear prior error before the network call.
         patchState(store, { loading: true, error: null });
         try {
+          // Run the caller-supplied mutation (taskApi.create / changeStatus / close / updateStep).
           const detail = await call();
           patchState(store, {
             // Keep the list in sync with the latest detail — avoids a roundtrip refetch.
@@ -199,9 +218,12 @@ export const TasksStore = signalStore(
           });
           return detail;
         } catch (err) {
+          // Cast — same contract as fetchListLatest above.
           const apiErr = err as ApiError;
+          // 409 recovery short-circuits the rest of the error path; null tells callers "handled, don't continue".
           if (recoverOn409 && (await handleConcurrentModification(apiErr))) return null;
           patchState(store, { error: apiErr, loading: false });
+          // create() suppresses the toast so 422 fieldErrors can be projected onto the form by the facade.
           if (surfaceErrors) toasts.fromApiError(apiErr);
           return null;
         }
@@ -212,8 +234,10 @@ export const TasksStore = signalStore(
       const runQuery = async <T extends Partial<TasksState>>(
         call: () => Promise<T>,
       ): Promise<void> => {
+        // Same loading-flip pattern as runMutation.
         patchState(store, { loading: true, error: null });
         try {
+          // Caller returns a partial state slice — keeps loaders concise (`{ taskTypes: [...] }`).
           const patch = await call();
           patchState(store, { ...patch, loading: false });
         } catch (err) {
@@ -249,6 +273,7 @@ export const TasksStore = signalStore(
         /** Lazy + deduped detail loader. Concurrent calls for the same id share the in-flight fetch.
          *  Returns the cached detail immediately if a load is already in progress for that id. */
         async loadDetail(id: number): Promise<TaskDetail | null> {
+          // Dedupe: another caller is already fetching this id — return whatever's cached (may be null on first load).
           if (store.detailLoadingIds().has(id)) {
             return store.detailById()[id] ?? null;
           }
@@ -257,12 +282,14 @@ export const TasksStore = signalStore(
           startingIds.add(id);
           patchState(store, { detailLoadingIds: startingIds });
           try {
+            // Run the GET — taskApi.getById is wrapped in retryTransient for idempotent reads.
             const detail = await firstValueFrom(taskApi.getById(id));
             patchState(store, {
               detailById: { ...store.detailById(), [id]: detail },
             });
             return detail;
           } catch (err) {
+            // Cast — http layer guarantees ApiError.
             const apiErr = err as ApiError;
             patchState(store, { error: apiErr });
             toasts.fromApiError(apiErr);
@@ -278,22 +305,29 @@ export const TasksStore = signalStore(
         /** Switches the active user filter. Persists the choice and refetches the list.
          *  No-ops when the id is unchanged to avoid a redundant network call. */
         async setCurrentUser(userId: number | null): Promise<void> {
+          // Same value → no-op so we don't waste a fetch.
           if (userId === store.currentUserId()) return;
+          // Persist FIRST so a reload reflects the new pick even if the refetch fails.
           prefs.writeCurrentUserId(userId);
           patchState(store, { currentUserId: userId });
+          // Refetch with stale-guard — rapid filter switches won't leak older responses.
           await fetchListLatest();
         },
 
         /** Switches the active task-type filter and refetches the list. No-ops when unchanged. */
         async setTypeFilter(taskTypeId: number | null): Promise<void> {
+          // Idempotent guard — same as setCurrentUser.
           if (taskTypeId === store.typeFilter()) return;
           patchState(store, { typeFilter: taskTypeId });
+          // Refetch — typeFilter is a server-side filter so we must hit the API.
           await fetchListLatest();
         },
 
         /** Switches the open/closed/all view. Local-only — no network call (tab counts depend on the full list). */
         setStateFilter(stateFilter: StateFilter): void {
+          // No-op for same value.
           if (stateFilter === store.stateFilter()) return;
+          // No refetch — open/closed is filtered client-side so tab counts stay consistent (frontend.md §6).
           patchState(store, { stateFilter });
         },
 

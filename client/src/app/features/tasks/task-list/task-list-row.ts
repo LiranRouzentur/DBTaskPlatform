@@ -38,17 +38,25 @@ export function toRowView(
   type: TaskTypeMetadata | undefined,
   userById: ReadonlyMap<number, User>,
 ): RowView {
+  // Look up the current StatusDefinition for the row — may be missing if metadata is still loading.
   const statusDef = type?.statuses.find((s) => s.status === task.status);
+  // Resolve the assignee via the O(1) map maintained in the store.
   const assignee = userById.get(task.assignedUserId);
   return {
     task,
+    // `Type N` fallback keeps the row renderable even before task-types metadata loads.
     typeName: type?.name ?? `Type ${task.taskTypeId}`,
     typeId: task.taskTypeId,
+    // Empty statuses array drives the stepper component to render no segments rather than crashing.
     statuses: type?.statuses ?? [],
+    // Same fallback strategy as typeName so the row's status column always has text.
     currentStatusName: statusDef?.name ?? `Status ${task.status}`,
+    // Em-dash placeholder communicates "unknown" more clearly than an empty string.
     assigneeName: assignee?.fullName ?? '—',
+    // Humanised "5 minutes ago" string; the absolute timestamp below feeds the tooltip.
     updatedRelative: formatRelativeTime(task.updatedAtUtc),
     updatedAbsolute: formatAbsolute(task.updatedAtUtc),
+    // Without metadata we conservatively gate the close button off — server is the authoritative check anyway.
     canClose: type ? WorkflowValidators.canClose(task, type).ok : false,
   };
 }
@@ -57,14 +65,19 @@ export function toRowView(
 export function compareRows(a: RowView, b: RowView, key: SortKey): number {
   switch (key) {
     case 'type':
+      // Alphabetical by type name — locale-aware so accented characters sort correctly.
       return a.typeName.localeCompare(b.typeName);
     case 'status': {
+      // Numeric status first — preserves workflow ordering (Draft < In review < Done, etc).
       const byNum = a.task.status - b.task.status;
+      // Equal numeric status (rare across types) → tie-break on the human name for stability.
       return byNum !== 0 ? byNum : a.currentStatusName.localeCompare(b.currentStatusName);
     }
     case 'assignee':
+      // Alphabetical by assignee name — matches user-picker ordering.
       return a.assigneeName.localeCompare(b.assigneeName);
     case 'updated':
+      // Numeric timestamp delta — negative = a older, positive = a newer; descending later flips this.
       return Date.parse(a.task.updatedAtUtc) - Date.parse(b.task.updatedAtUtc);
   }
 }

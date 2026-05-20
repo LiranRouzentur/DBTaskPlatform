@@ -177,58 +177,76 @@ export class UserPickerComponent extends PickerOverlayBase<number> {
   // ─── Computed ────────────────────────────────────────────────────────────
   /** True iff the "All Users" row is the current selection — drives the icon/label fork on the trigger. */
   protected readonly isAllSelected = computed(
+    // Both clauses required: must be in all-option mode AND value sit on the sentinel.
     () => this.allOption() && this.value() === ALL_USERS_VALUE,
   );
 
   /** Resolves the selected user object; null for "all" or unset, so the template can fall back to placeholders. */
   protected readonly selected = computed(() => {
+    // Snapshot the value once — used in two branches below.
     const id = this.value();
+    // Null = unselected; sentinel = "all" — both render placeholder/all chrome, not a user avatar.
     if (id === null || id === ALL_USERS_VALUE) return null;
+    // Defensive `?? null` for the race where the stored id refers to a user just removed from `users`.
     return this.users().find((u) => u.id === id) ?? null;
   });
 
   /** Case-insensitive name match over `users`; passes through unchanged when the query is empty. */
   protected readonly filtered = computed(() => {
+    // Trim+lowercase once so the per-user comparison is cheap.
     const q = this.query().trim().toLowerCase();
+    // Empty query → return the original array reference; downstream signals stay reference-stable.
     if (!q) return this.users();
+    // Includes-based substring match; chosen over startsWith so middle-of-name typos still match.
     return this.users().filter((u) => u.fullName.toLowerCase().includes(q));
   });
 
   // ─── Public API / UI Actions ─────────────────────────────────────────────
   /** Search-input handler — pushes the new query and re-anchors the keyboard cursor to the first match. */
   protected onQuery(value: string): void {
+    // Push the new query — `filtered` recomputes synchronously thanks to signals.
     this.query.set(value);
+    // Move the keyboard cursor to the new first match so Enter on a typed query commits an intuitive choice.
     this.activeId.set(this.filtered()[0]?.id ?? null);
   }
 
   // ─── Subclass contract ───────────────────────────────────────────────────
   protected isDisabled(): boolean {
+    // Surface the input directly — no extra gating logic in this picker.
     return this.disabled();
   }
 
   /** Resets search and lands the cursor on the current value (or the "all" row / first user as fallback). */
   protected onBeforeOpen(): void {
+    // Clear stale search — a previous open's filter would otherwise hide most of the list.
     this.query.set('');
+    // Snapshot the current value for the cursor-seeding decision below.
     const v = this.value();
     this.activeId.set(
+      // Concrete user selected → keep the cursor on them (ArrowDown then moves to next).
       v !== null && v !== ALL_USERS_VALUE
         ? v
         : this.allOption()
+          // "All Users" mode (filter usage) → land on the all-row.
           ? ALL_USERS_VALUE
+          // No all-row and no selection → first user is the natural landing spot.
           : this.users()[0]?.id ?? null,
     );
   }
 
   protected getActiveId(): number | null {
+    // Base class polls this on every Arrow press — keep it a direct signal read.
     return this.activeId();
   }
 
   protected setActiveId(id: number | null): void {
+    // Routing through the writable signal keeps the template's `is-active` class binding reactive.
     this.activeId.set(id);
   }
 
   /** Navigable set = (optional "all" row) + currently-filtered users — must match render order for ArrowUp/Down to feel right. */
   protected getNavigableIds(): readonly number[] {
+    // Build in render order: "all" row first (when present), then the filtered user list.
     const ids: number[] = [];
     if (this.allOption()) ids.push(ALL_USERS_VALUE);
     for (const u of this.filtered()) ids.push(u.id);
@@ -236,6 +254,7 @@ export class UserPickerComponent extends PickerOverlayBase<number> {
   }
 
   protected emitChange(id: number): void {
+    // Parent forwards into the store; sentinel value tells the store to clear the filter.
     this.valueChange.emit(id);
   }
 }

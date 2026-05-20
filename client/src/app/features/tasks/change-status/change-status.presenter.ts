@@ -39,7 +39,9 @@ export class ChangeStatusPresenter {
     type: TaskTypeMetadata,
   ): readonly StatusOptionView[] {
     return type.statuses.map((s) => {
+      // Retired = previously visited but no longer in the type definition; rendered with a dimmer style.
       const retired = task.retiredStatuses?.includes(s.status) ?? false;
+      // "Current" branch — distinct from forward/backward so the stepper can render it differently.
       if (s.status === task.status) {
         return {
           status: s.status,
@@ -50,17 +52,20 @@ export class ChangeStatusPresenter {
           retired,
         };
       }
+      // Delegate gating to WorkflowValidators so the UI mirrors the engine's allowed transitions exactly.
       const check = WorkflowValidators.canChangeStatus(task, s.status, type);
       if (check.ok) {
         return {
           status: s.status,
           name: s.name,
+          // Direction is decided by numeric comparison — the engine doesn't distinguish but the UI styles them.
           direction: s.status > task.status ? 'forward' : 'backward',
           disabled: false,
           disabledReason: null,
           retired,
         };
       }
+      // Disabled branch — surface the rule message as a tooltip so users understand why the pill is greyed out.
       return {
         status: s.status,
         name: s.name,
@@ -74,7 +79,9 @@ export class ChangeStatusPresenter {
 
   /** Resolves a status number to its human name; falls back to `"Status N"` to keep templates safe before metadata loads. */
   statusName(status: number | null, type: TaskTypeMetadata | null): string {
+    // Either input missing → empty string (templates treat that as "render nothing").
     if (status === null || !type) return '';
+    // Fallback `Status N` covers the race where metadata exists but doesn't yet contain this status (rare; defensive).
     return type.statuses.find((s) => s.status === status)?.name ?? `Status ${status}`;
   }
 
@@ -85,19 +92,26 @@ export class ChangeStatusPresenter {
     history: Readonly<Record<string, unknown>>,
   ): void {
     for (const field of fields) {
+      // History value for this field — undefined/null means "nothing to prefill", keep the form default.
       const raw = history[field.name];
       if (raw === undefined || raw === null) continue;
+      // Look up the FormGroup child by descriptor name.
       const control = form.get(field.name);
       if (!control) continue;
 
+      // FormArray path — iterate fixed-length and prefill each cell. Fixed length comes from ItemCount.
       if (field.itemCount > 1 && control instanceof FormArray) {
+        // Normalise to array — history may be malformed if the spec changed between versions.
         const items = Array.isArray(raw) ? raw : [];
         for (let i = 0; i < control.length; i++) {
+          // Per-cell history value (may be missing if history was saved before the cell existed).
           const item = items[i];
           if (item === undefined || item === null) {
+            // Reset with the kind-appropriate empty value so validators see "no entry" rather than `undefined`.
             control.at(i)?.reset(field.kind === 'Number' ? null : '');
             continue;
           }
+          // Coerce per Kind so the FormControl receives the correct primitive type.
           control.at(i)?.setValue(
             field.kind === 'Number'
               ? typeof item === 'number'
@@ -110,19 +124,24 @@ export class ChangeStatusPresenter {
         }
         continue;
       }
+      // Scalar path — `as never` because FormGroup.get returns a loose AbstractControl, we know the kind matches.
       control.setValue(raw as never);
     }
   }
 
   /** Converts a form's raw value to the request payload — keeps arrays verbatim, drops empty scalars so the server sees omissions. */
   normalizeCustomData(form: FormGroup): Record<string, unknown> {
+    // getRawValue includes disabled controls — important if a future flow disables fields based on permissions.
     const raw = form.getRawValue() as Record<string, unknown>;
+    // Build a fresh object so callers can mutate the result without touching the form snapshot.
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(raw)) {
+      // Arrays pass through verbatim — server treats them as fixed-length per ItemCount and re-validates.
       if (Array.isArray(value)) {
         out[key] = value;
         continue;
       }
+      // Drop empty scalars so the JSON omits the field entirely (server then applies "missing" semantics).
       if (value === '' || value === null) continue;
       out[key] = value;
     }

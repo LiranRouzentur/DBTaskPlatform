@@ -13,5 +13,6 @@ const TONE_POOL: readonly BadgeTone[] = ['warning', 'danger', 'neutral', 'accent
 
 /** Maps a task-type id to its badge tone. Curated entries win; unknown types pick deterministically from the pool. */
 export function taskTypeTone(typeId: number): BadgeTone {
+  // Curated lookup first so seeded types keep their hand-picked colours; fall back to deterministic pool indexing for new types.
   return CURATED_TONES[typeId] ?? TONE_POOL[Math.abs(typeId) % TONE_POOL.length];
 }

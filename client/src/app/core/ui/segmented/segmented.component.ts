@@ -52,29 +52,40 @@ export class SegmentedComponent<T extends string = string> {
   // ─── Public API / UI Actions ─────────────────────────────────────────────
   /** ARIA-pattern keyboard model: arrows cycle, Home/End jump to ends, other keys pass through. */
   protected onKeydown(event: KeyboardEvent): void {
+    // Snapshot options once per keystroke — `options()` is a signal read; keeping a local avoids re-reading inside switch.
     const opts = this.options();
+    // Empty option list → no cursor to move; bail before any preventDefault.
     if (opts.length === 0) return;
+    // Currently-selected index drives all relative-move keys (arrows / Home / End would otherwise need separate lookups).
     const currentIndex = opts.findIndex((o) => o.value === this.value());
+    // Mutable target index; defaulting to current means unmatched keys (handled by `default`) are no-ops.
     let nextIndex = currentIndex;
     switch (event.key) {
       case 'ArrowRight':
       case 'ArrowDown':
+        // Cycle forward — both axes treated equivalently for vertical and horizontal layouts.
         nextIndex = (currentIndex + 1) % opts.length;
         break;
       case 'ArrowLeft':
       case 'ArrowUp':
+        // `+ opts.length` keeps modulo positive when currentIndex is 0.
         nextIndex = (currentIndex - 1 + opts.length) % opts.length;
         break;
       case 'Home':
+        // ARIA tablist convention — jump to first tab.
         nextIndex = 0;
         break;
       case 'End':
+        // ARIA tablist convention — jump to last tab.
         nextIndex = opts.length - 1;
         break;
       default:
+        // Any other key (Tab, letters, etc.) passes through to the browser/page.
         return;
     }
+    // Prevent default arrow scrolling / Home-End page jumps now that we've claimed the keystroke.
     event.preventDefault();
+    // Commit through the `model` so two-way binding propagates the new value to the parent.
     this.value.set(opts[nextIndex].value);
   }
 }

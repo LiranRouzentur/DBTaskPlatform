@@ -112,44 +112,54 @@ export class TypePickerComponent extends PickerOverlayBase<number> {
   // ─── Computed ────────────────────────────────────────────────────────────
   /** Label of the currently-selected option — empty string when the value isn't in the options list. */
   protected readonly selectedLabel = computed(() => {
+    // Snapshot the signal so the find predicate doesn't re-read it per iteration.
     const v = this.value();
+    // `?? ''` guards the brief window after deletion where the stored id no longer exists in `options`.
     return this.options().find((o) => o.value === v)?.label ?? '';
   });
 
   /** Trigger icon — uses the generic leading icon when "all" is selected, otherwise a single-type bullet. */
   protected readonly triggerIcon = computed<IconName>(() =>
+    // "All Types" gets the caller-provided generic glyph; specific types share the bullet icon by design.
     this.value() === this.allValue() ? this.leadingIcon() : 'circle-dot',
   );
 
   // ─── Subclass contract ───────────────────────────────────────────────────
   /** Narrower min-width than the base default — type lists are short labels. */
   protected override getMinWidth(): number {
+    // Override the 240px default; type names are typically 8–12 chars so 200 is plenty.
     return 200;
   }
 
   protected isDisabled(): boolean {
+    // Surface the input straight to the base class — no extra gating logic in this picker.
     return this.disabled();
   }
 
   /** Seeds the keyboard cursor on the currently-selected option so ArrowDown lands intuitively. */
   protected onBeforeOpen(): void {
+    // On open, place the keyboard cursor on the committed value so the first ArrowDown moves to the next option.
     this.activeValue.set(this.value());
   }
 
   protected getActiveId(): number | null {
+    // Base class polls this on every Arrow key — keep it a direct signal read.
     return this.activeValue();
   }
 
   protected setActiveId(id: number | null): void {
+    // Base class calls this from Arrow handlers; routing through the signal keeps templates reactive.
     this.activeValue.set(id);
   }
 
   /** Every option is keyboard-reachable — no filtering applied. */
   protected getNavigableIds(): readonly number[] {
+    // Type picker has no search box, so the navigable set equals the full options list.
     return this.options().map((o) => o.value);
   }
 
   protected emitChange(id: number): void {
+    // Final commit — parent re-runs the list filter with this id.
     this.valueChange.emit(id);
   }
 }

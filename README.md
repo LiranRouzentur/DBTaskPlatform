@@ -6,7 +6,7 @@ A full-stack extensible task-management platform built for the .NET + Angular as
 - **Client**: Angular 19 (strict TypeScript) + NgRx Signals
 - **Database**: SQL Server 2022
 
-The full requirements live in [Claude.md](Claude.md). The original brief is [dotnet-angular-assignment.docx](dotnet-angular-assignment.docx).
+The full requirements live in [.claude/claude.md](claude.md). The original brief is [.claude/dotnet-angular-assignment.docx](dotnet-angular-assignment.docx).
 
 ---
 

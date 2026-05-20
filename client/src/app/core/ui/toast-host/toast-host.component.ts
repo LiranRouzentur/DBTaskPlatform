@@ -53,11 +53,13 @@ export class ToastHostComponent {
   // ─── Public API / UI Actions ─────────────────────────────────────────────
   /** Tone → icon name lookup used by the template. */
   protected iconFor(tone: ToastTone): IconName {
+    // Direct map indexing — tone union is exhaustive in the lookup table so no fallback is needed.
     return ICON_BY_TONE[tone];
   }
 
   /** Manual dismissal — delegates to the service (which also handles auto-dismiss timers). */
   protected dismiss(id: number): void {
+    // Service owns the queue + timers; manual dismissal is just a "cancel timer + remove" passthrough.
     this.svc.dismiss(id);
   }
 }

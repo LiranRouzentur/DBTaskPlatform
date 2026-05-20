@@ -22,6 +22,7 @@ export type ErrorToneFn = (err: ApiError) => ToastTone;
 
 /** Default tone classifier — soft-fail (warning) for expected user-facing errors, danger for everything else. */
 export const defaultErrorTone: ErrorToneFn = (err) => {
+  // User-recoverable kinds — retry, refresh, fix input, etc. Soft tone keeps the UI from feeling broken.
   if (
     err.kind === 'network' ||
     err.kind === 'conflict' ||
@@ -30,6 +31,7 @@ export const defaultErrorTone: ErrorToneFn = (err) => {
   ) {
     return 'warning';
   }
+  // Everything else (server faults, unknowns) is a real failure — escalate to danger.
   return 'danger';
 };
 
@@ -53,11 +55,16 @@ export function bindStoreErrorToast(
   tone: ErrorToneFn = defaultErrorTone,
   onError?: (err: ApiError) => void,
 ): void {
+  // Toast host injected once at binding time — keeps the effect callback closure small.
   const toasts = inject(ToastService);
   effect(() => {
+    // Read the signal first so Angular registers the dependency before any early-return.
     const err = store.error();
+    // No error → nothing to surface; quiet exit avoids spurious toasts on the cleared state.
     if (!err) return;
+    // Tone + title callbacks let each feature personalise the message without forking the helper.
     toasts.push(err.message, { tone: tone(err), title: title(err) });
+    // Optional projection hook — change-status uses this to map 422 fieldErrors onto form controls.
     onError?.(err);
     // Clear after handling so the next error (even same shape) triggers the effect again.
     store.clearError();

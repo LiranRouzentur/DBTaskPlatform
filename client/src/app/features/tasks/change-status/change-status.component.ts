@@ -70,6 +70,7 @@ export class ChangeStatusComponent {
   // ─── Lifecycle ───────────────────────────────────────────────────────────
   constructor() {
     // Propagate route-driven id changes into the facade so it can (re)load the detail and rebuild the form.
+    // Effect runs on construction and re-runs whenever Angular's input binding pushes a new `:id` value.
     effect(() => this.f.setTaskId(this.id()));
   }
 }

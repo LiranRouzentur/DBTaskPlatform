@@ -8,15 +8,18 @@ import { HttpInterceptorFn } from '@angular/common/http';
  * environments (the fallback is not cryptographically strong but is sufficient for log joining).
  */
 export const correlationIdInterceptor: HttpInterceptorFn = (req, next) => {
-  // Respect an upstream-supplied header — useful for replay/debug tooling.
+  // Short-circuit when an upstream caller (replay tooling, e2e harness) already supplied an id — don't overwrite it.
   if (req.headers.has('X-Correlation-Id')) {
+    // Pass through untouched so the upstream id propagates end-to-end.
     return next(req);
   }
 
+  // Prefer crypto.randomUUID for collision-resistance; fall back to Math.random for legacy environments (non-secure contexts).
   const id =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2);
 
+  // Clone with setHeaders (HttpRequest is immutable) — downstream interceptors and the server now see the stamped id.
   return next(req.clone({ setHeaders: { 'X-Correlation-Id': id } }));
 };

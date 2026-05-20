@@ -31,8 +31,10 @@ export class SkeletonComponent {
 
   /** Resolved height: caller-specified `height` wins, otherwise a sensible default per shape. */
   protected readonly effectiveHeight = computed<string>(() => {
+    // Caller-provided height always wins — the shape defaults are only used when nothing is specified.
     const h = this.height();
     if (h) return h;
+    // Shape-derived defaults — line ~ text row, block ~ card, circle ~ avatar.
     switch (this.shape()) {
       case 'line': return '12px';
       case 'block': return '64px';

@@ -61,17 +61,24 @@ export class AvatarComponent {
 
 /** Extracts up to two uppercase initials: "Jane Doe" → "JD"; single-word → first two chars; empty → "?". */
 function initialsFrom(name: string): string {
+  // Split on any whitespace run so multiple/odd spacing in display names doesn't break extraction.
   const parts = name.trim().split(/\s+/).filter(Boolean);
+  // Empty / whitespace-only name → render a recognisable fallback rather than a blank chip.
   if (parts.length === 0) return '?';
+  // Single-word name (e.g. "cher") → take the first two letters so the chip never has just one glyph.
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  // Multi-word name → first letter of first + last word; ignores middle names for stable "JD"-style output.
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 /** Stable 32-bit-ish hash (djb-like multiplier-31) used to deterministically index into `TONES`. */
 function hashString(s: string): number {
+  // Accumulator — bitwise-or with 0 forces 32-bit integer math so the result is reproducible across JS engines.
   let h = 0;
   for (let i = 0; i < s.length; i++) {
+    // Classic djb-style mix; `| 0` keeps `h` a signed 32-bit integer.
     h = (h * 31 + s.charCodeAt(i)) | 0;
   }
+  // Abs guards against negative hashes blowing up the `% TONES.length` index lookup.
   return Math.abs(h);
 }

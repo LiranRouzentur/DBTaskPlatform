@@ -30,11 +30,16 @@ export class TaskApi {
 
   /** GET /api/tasks with optional filters. Retried on transient failures. */
   list(filters: TaskListFilters = {}): Observable<TaskListItem[]> {
+    // Start with an empty immutable HttpParams; each `set` returns a new instance so we reassign.
     let params = new HttpParams();
     // Build query string only for filters that are actually set — `null`/`undefined` are dropped.
+    // Skip when null/undefined so the server treats the absence as "no user filter" rather than `userId=null`.
     if (filters.userId != null)     params = params.set('userId', filters.userId);
+    // Same null-guard for task-type — keeps URL clean and avoids server-side parsing of "null".
     if (filters.taskTypeId != null) params = params.set('taskTypeId', filters.taskTypeId);
+    // Coerce boolean to string explicitly — HttpParams accepts strings; relying on implicit toString would still work but this makes intent clear.
     if (filters.isClosed != null)   params = params.set('isClosed', String(filters.isClosed));
+    // Return — retryTransient wraps the GET (idempotent → safe to replay on transient 5xx / network errors).
     return this.http.get<TaskListItem[]>('/api/tasks', { params }).pipe(retryTransient());
   }
 
