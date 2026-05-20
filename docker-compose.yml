@@ -31,6 +31,7 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Default: "Server=sqlserver,1433;Database=TaskPlatform;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False"
+      Logging__LogLevel__Microsoft.AspNetCore: Information
       # Demo-only toggle: when "true", MarketingTaskTypeSeeder runs after
       # DatabaseSeeder on a fresh DB and adds a third task type to prove
       # data-driven extensibility end-to-end. Set to "false" (or remove)

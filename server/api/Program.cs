@@ -5,6 +5,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
 using TaskPlatform.Api.ExceptionHandlers;
 using TaskPlatform.Api.Health;
+using TaskPlatform.Api.Middleware;
 using TaskPlatform.Application.Services;
 using TaskPlatform.Application.Workflow;
 using TaskPlatform.Data.Persistence;
@@ -80,6 +81,10 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 
 await app.Services.GetRequiredService<ITaskTypeRegistry>().EnsureLoadedAsync();
+
+// Must run before UseExceptionHandler so the correlation-id scope is active when exception
+// handlers log — every log line for a request (including EF DbCommand + handlers) carries the id.
+app.UseMiddleware<CorrelationIdMiddleware>();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
