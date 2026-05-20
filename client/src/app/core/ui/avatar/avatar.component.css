@@ -1,0 +1,14 @@
+:host { display: inline-flex; }
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  flex: none;
+  user-select: none;
+  font-feature-settings: "ss01";
+}

@@ -1,0 +1,169 @@
+:host {
+  display: block;
+}
+
+:host:has(.hstepper) {
+  width: 100%;
+}
+
+.ring {
+  --n: 3;
+  --d: 10deg;
+  --t: 1px;
+  position: relative;
+  width: 32px;
+  height: 32px;
+  background: var(--color-surface);
+  border-radius: 50%;
+}
+
+.ring::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--ring-bg, var(--color-border-strong));
+  -webkit-mask: radial-gradient(
+    circle,
+    transparent 0 calc(50% - var(--t)),
+    #000 calc(50% - var(--t) + 0.5px) 100%
+  );
+  mask: radial-gradient(
+    circle,
+    transparent 0 calc(50% - var(--t)),
+    #000 calc(50% - var(--t) + 0.5px) 100%
+  );
+  pointer-events: none;
+}
+
+.num {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+  z-index: 1;
+}
+
+.hover-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hover-layer .arc-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 6;
+  pointer-events: stroke;
+}
+
+.hstepper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: stretch;
+  gap: 0;
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  width: 100%;
+}
+
+.hstep {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  min-width: 0;
+}
+
+.hstep::before {
+  content: "";
+  position: absolute;
+  top: 13px;
+  left: calc(-50% + 14px);
+  right: calc(50% + 14px);
+  height: 2px;
+  background: var(--color-border);
+  z-index: 0;
+}
+.hstep:first-child::before {
+  display: none;
+}
+
+.hstep.is-done + .hstep::before {
+  background: var(--color-accent);
+}
+
+.hstep-node {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
+.hstep-label {
+  margin-top: 8px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+  max-width: 14ch;
+  line-height: var(--leading-snug);
+}
+
+.hstep.is-done .hstep-node {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-white, #fff);
+}
+.hstep.is-done .hstep-label {
+  color: var(--color-text);
+}
+
+.hstep.is-current .hstep-node {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--color-white, #fff);
+  box-shadow: 0 0 0 3px var(--color-success-soft, rgba(34, 197, 94, 0.18));
+}
+.hstep.is-current .hstep-label {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.hstep.is-target .hstep-node {
+  border-color: var(--color-accent);
+  border-style: dashed;
+  background: var(--color-surface);
+  color: var(--color-accent-active, var(--color-accent));
+  animation: tp-pulse 1.4s var(--ease-out) infinite;
+}
+
+.hstep.lock .hstep-node.lock-node {
+  background: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-muted);
+}

@@ -1,0 +1,82 @@
+<tp-modal
+  eyebrow="Create"
+  title="New task"
+  (closed)="f.requestCancel()"
+>
+  <form [formGroup]="f.form" (ngSubmit)="f.onSubmit()" novalidate id="create-task-form">
+    <section class="section">
+      <header class="section-header">
+        <h3 class="section-title">Task type</h3>
+      </header>
+      @if (store.taskTypes().length === 0) {
+        <p class="empty-text">Task types are still loading…</p>
+      } @else {
+        <div class="type-grid">
+          @for (type of store.taskTypes(); track type.id) {
+            <tp-type-card
+              [type]="type"
+              [selected]="f.selectedTypeId() === type.id"
+              (picked)="f.pickType($event)"
+            />
+          }
+        </div>
+      }
+    </section>
+
+    <div class="divider"></div>
+
+    <section class="section">
+      <tp-field label="Assignee" [required]="true">
+        <div class="assignee-row">
+          <tp-user-picker
+            [users]="store.users()"
+            [value]="f.selectedAssigneeId() > 0 ? f.selectedAssigneeId() : null"
+            placeholder="Pick a user"
+            panelLabel="Choose initial assignee"
+            (valueChange)="f.pickAssignee($event)"
+          />
+        </div>
+      </tp-field>
+    </section>
+  </form>
+
+  <ng-container footer>
+    <tp-button variant="ghost" type="button" (click)="f.requestCancel()">Cancel</tp-button>
+
+    <tp-button
+      variant="primary"
+      type="button"
+      trailingIcon="arrow-right"
+      [disabled]="!f.canSubmit()"
+      [loading]="store.loading()"
+      (click)="f.onSubmit()"
+    >Create task</tp-button>
+  </ng-container>
+</tp-modal>
+
+@if (f.dialog.is('cancel')) {
+  <tp-confirm-modal
+    [title]="f.discard.title"
+    [confirmLabel]="f.discard.confirmLabel"
+    confirmVariant="danger"
+    [cancelLabel]="f.discard.cancelLabel"
+    (confirmed)="f.confirmDialog()"
+    (cancelled)="f.cancelDialog()"
+  >
+    {{ f.discard.body }}
+  </tp-confirm-modal>
+}
+
+@if (f.dialog.is('create')) {
+  <tp-confirm-modal
+    title="Create this task?"
+    confirmLabel="Create task"
+    confirmTrailingIcon="arrow-right"
+    [loading]="store.loading()"
+    (confirmed)="f.confirmDialog()"
+    (cancelled)="f.cancelDialog()"
+  >
+    A new <strong>{{ f.selectedTypeName() }}</strong> task will be created and
+    assigned to <strong>{{ f.selectedAssigneeName() }}</strong>. Continue?
+  </tp-confirm-modal>
+}

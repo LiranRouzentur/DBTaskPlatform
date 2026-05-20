@@ -1,0 +1,249 @@
+<h1 class="sr-only">Tasks</h1>
+<div class="toolbar">
+  <tp-segmented
+    [options]="f.tabs()"
+    [value]="f.activeTab()"
+    (valueChange)="f.segmentedValueChange($event)"
+    ariaLabel="Task state filter"
+  />
+
+  <div class="filter-group">
+    <tp-type-picker
+      [options]="f.typeFilterOptions()"
+      [value]="f.typeFilter()"
+      [allValue]="ALL_TYPES"
+      panelLabel="Filter by task type"
+      (valueChange)="f.onTypeFilterChange($event)"
+    />
+    @if (store.users().length > 0) {
+      <tp-user-picker
+        [users]="store.users()"
+        [value]="f.userPickerValue()"
+        [allOption]="true"
+        placeholder="Pick a user"
+        panelLabel="Switch current user"
+        searchPlaceholder="Search users"
+        (valueChange)="f.onUserPick($event)"
+      />
+    }
+    <tp-button variant="primary" (click)="f.goToNew()">New task</tp-button>
+  </div>
+</div>
+
+<tp-card [padded]="false">
+  @if (f.initialLoading()) {
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col" class="col-type">Type</th>
+            <th scope="col" class="col-status">Status</th>
+            <th scope="col" class="col-assignee">Assignee</th>
+            <th scope="col" class="col-updated">Updated</th>
+            <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (i of [0, 1, 2, 3, 4]; track i) {
+            <tr class="row">
+              <td><tp-skeleton width="86px" /></td>
+              <td><tp-skeleton width="160px" /></td>
+              <td>
+                <div class="assignee-cell">
+                  <tp-skeleton shape="circle" width="24px" height="24px" />
+                  <tp-skeleton width="90px" />
+                </div>
+              </td>
+              <td><tp-skeleton width="60px" /></td>
+              <td><tp-skeleton width="40px" /></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else if (!f.hasAnyTasks()) {
+    <tp-empty-state
+      icon="inbox"
+      title="No tasks yet"
+      description="Create a task to start tracking work for this user."
+    >
+      <tp-button variant="primary" (click)="f.goToNew()">Create task</tp-button>
+    </tp-empty-state>
+  } @else if (f.visibleRows().length === 0) {
+    <tp-empty-state
+      [icon]="f.activeTab() === 'open' ? 'check-circle' : 'inbox'"
+      [title]="f.activeTab() === 'open' ? 'No open tasks' : f.activeTab() === 'closed' ? 'No closed tasks' : 'No matching tasks'"
+      [description]="f.activeTab() === 'open' ? 'All caught up. Closed tasks live in the other tab.' : f.activeTab() === 'closed' ? 'Nothing has been closed yet.' : 'Try clearing the type filter.'"
+    />
+  } @else {
+    <div class="table-wrap">
+      <table class="data-table">
+        <caption class="sr-only">Tasks for {{ store.currentUser()?.fullName ?? 'current user' }}</caption>
+        <thead>
+          <tr>
+            <th
+              scope="col"
+              class="col-type"
+              [attr.aria-sort]="f.sortKey() === 'type' ? (f.sortDir() === 'asc' ? 'ascending' : 'descending') : 'none'"
+            >
+              <button
+                type="button"
+                class="th-sort"
+                [class.is-active]="f.sortKey() === 'type'"
+                (click)="f.toggleSort('type')"
+              >
+                <span>Type</span>
+                <tp-icon
+                  [name]="f.sortKey() === 'type' && f.sortDir() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                  [size]="12"
+                  class="th-sort-icon"
+                />
+              </button>
+            </th>
+            <th
+              scope="col"
+              class="col-status"
+              [attr.aria-sort]="f.sortKey() === 'status' ? (f.sortDir() === 'asc' ? 'ascending' : 'descending') : 'none'"
+            >
+              <button
+                type="button"
+                class="th-sort"
+                [class.is-active]="f.sortKey() === 'status'"
+                (click)="f.toggleSort('status')"
+              >
+                <span>Status</span>
+                <tp-icon
+                  [name]="f.sortKey() === 'status' && f.sortDir() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                  [size]="12"
+                  class="th-sort-icon"
+                />
+              </button>
+            </th>
+            <th
+              scope="col"
+              class="col-assignee"
+              [attr.aria-sort]="f.sortKey() === 'assignee' ? (f.sortDir() === 'asc' ? 'ascending' : 'descending') : 'none'"
+            >
+              <button
+                type="button"
+                class="th-sort"
+                [class.is-active]="f.sortKey() === 'assignee'"
+                (click)="f.toggleSort('assignee')"
+              >
+                <span>Assignee</span>
+                <tp-icon
+                  [name]="f.sortKey() === 'assignee' && f.sortDir() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                  [size]="12"
+                  class="th-sort-icon"
+                />
+              </button>
+            </th>
+            <th
+              scope="col"
+              class="col-updated"
+              [attr.aria-sort]="f.sortKey() === 'updated' ? (f.sortDir() === 'asc' ? 'ascending' : 'descending') : 'none'"
+            >
+              <button
+                type="button"
+                class="th-sort"
+                [class.is-active]="f.sortKey() === 'updated'"
+                (click)="f.toggleSort('updated')"
+              >
+                <span>Updated</span>
+                <tp-icon
+                  [name]="f.sortKey() === 'updated' && f.sortDir() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                  [size]="12"
+                  class="th-sort-icon"
+                />
+              </button>
+            </th>
+            <th scope="col" class="col-actions"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of f.visibleRows(); track row.task.id) {
+            <tr
+              class="row"
+              [class.is-closed]="row.task.isClosed"
+              role="button"
+              tabindex="0"
+              [attr.aria-label]="'Open task ' + row.task.id"
+              (click)="f.goToChangeStatus(row)"
+              (keydown.enter)="f.goToChangeStatus(row)"
+              (keydown.space)="$event.preventDefault(); f.goToChangeStatus(row)"
+            >
+              <td class="col-type">
+                <tp-badge [tone]="f.typeTone(row.typeId)" variant="soft" [dot]="true">{{ row.typeName }}</tp-badge>
+              </td>
+              <td class="col-status">
+                <div class="status-cell">
+                  <span class="status-name">{{ row.currentStatusName }}</span>
+                  <span class="status-stepper-slot">
+                    <tp-status-stepper
+                      [statuses]="row.statuses"
+                      [current]="row.task.status"
+                      [closed]="row.task.isClosed"
+                      density="compact"
+                    />
+                  </span>
+                </div>
+              </td>
+              <td class="col-assignee">
+                <div class="assignee-cell">
+                  <tp-avatar [name]="row.assigneeName" size="sm" />
+                  <span class="assignee-name">{{ row.assigneeName }}</span>
+                </div>
+              </td>
+              <td class="col-updated">
+                <span class="muted" [attr.title]="row.updatedAbsolute">{{ row.updatedRelative }}</span>
+              </td>
+              <td class="col-actions" (click)="$event.stopPropagation()">
+                <div class="actions-cell">
+                  @if (row.task.isClosed) {
+                    <tp-badge tone="neutral" variant="soft">
+                      Closed
+                      <tp-icon name="lock" [size]="10" />
+                    </tp-badge>
+                  } @else if (row.canClose) {
+                    <tp-icon-button
+                      icon="check"
+                      label="Close task"
+                      title="Close task"
+                      variant="ghost"
+                      size="sm"
+                      [disabled]="store.loading()"
+                      (click)="f.requestCloseRow(row)"
+                    />
+                  }
+                  <tp-icon-button
+                    icon="arrow-right"
+                    label="Open task"
+                    title="Open task"
+                    variant="ghost"
+                    size="sm"
+                    (click)="f.goToChangeStatus(row)"
+                  />
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</tp-card>
+
+<router-outlet />
+
+@if (f.confirmCloseRow(); as row) {
+  <tp-confirm-modal
+    title="Close this task?"
+    confirmLabel="Close task"
+    confirmLeadingIcon="check"
+    [loading]="store.loading()"
+    (confirmed)="f.onConfirmClose()"
+    (cancelled)="f.cancelCloseRow()"
+  >
+    Closing applies right away and makes the {{ row.typeName }} task immutable. You can’t move it through any more statuses afterward.
+  </tp-confirm-modal>
+}

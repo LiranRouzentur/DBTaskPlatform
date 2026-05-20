@@ -1,0 +1,102 @@
+:host {
+  display: inline-flex;
+  position: relative;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+}
+.trigger:hover:not(:disabled) {
+  background: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+}
+.trigger:focus-visible { outline: none; box-shadow: var(--ring); }
+.trigger:disabled { cursor: not-allowed; opacity: 0.6; }
+
+.trigger.compact { padding: 0 6px; gap: 6px; }
+
+.trigger-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-active);
+  flex: none;
+}
+
+.trigger-name {
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel {
+  position: fixed;
+  min-width: 200px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  z-index: 300;
+  overflow: hidden;
+  animation: tp-fade-in var(--dur-fast) var(--ease-out);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.opt {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-md);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+}
+.opt-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  flex: none;
+}
+.opt-name { flex: 1; }
+.opt.is-active { background: var(--color-surface-2); }
+.opt.is-selected { color: var(--color-accent-active); }
+.opt.is-selected .opt-icon {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-active);
+}
+.opt:focus-visible { outline: none; box-shadow: var(--ring); }

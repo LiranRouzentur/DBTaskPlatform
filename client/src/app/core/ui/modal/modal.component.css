@@ -1,0 +1,109 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  
+  animation: tp-modal-host-in var(--dur-base) var(--ease-out) both;
+  will-change: opacity;
+}
+
+@keyframes tp-modal-host-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 18, 32, 0.45);
+  
+}
+
+.surface {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-pop);
+  outline: none;
+  
+  animation: tp-modal-surface-fade-in var(--dur-base) var(--ease-out);
+}
+
+@keyframes tp-modal-surface-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+  flex: none;
+}
+
+.head-text { min-width: 0; flex: 1; }
+
+.eyebrow {
+  display: block;
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+
+.subtitle {
+  margin-top: 6px;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  max-width: 60ch;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-6);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-border);
+  flex: none;
+}
+.footer:empty { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  :host { animation: none; }
+  .surface { animation: none; }
+}
+
+@media (max-width: 640px) {
+  :host { padding: var(--space-2); }
+  .surface {
+    width: 100%;
+    border-radius: var(--radius-lg);
+  }
+  .header, .body, .footer { padding-left: var(--space-4); padding-right: var(--space-4); }
+}

@@ -1,0 +1,280 @@
+@if (f.detailLoading() && !f.task()) {
+  <div class="detail-loader" role="status" aria-live="polite">
+    <div class="detail-loader-backdrop"></div>
+    <div class="detail-loader-card">
+      <tp-spinner [size]="36" label="Loading task" />
+      <p class="detail-loader-caption">Loading task…</p>
+    </div>
+  </div>
+} @else if (!f.task()) {
+  <tp-modal
+    eyebrow="Task Workflow"
+    title="Task not found"
+    (closed)="f.routeBack()"
+  >
+    <tp-empty-state
+      icon="alert-circle"
+      title="We couldn’t find that task"
+      [description]="'Task ' + id() + ' isn’t in the current view. Try switching the user or pick All Users.'"
+    >
+      <tp-button variant="primary" leadingIcon="arrow-left" (click)="f.routeBack()">Back to tasks</tp-button>
+    </tp-empty-state>
+  </tp-modal>
+} @else {
+  <tp-modal
+    eyebrow="Task Workflow"
+    [ariaLabel]="'Task workflow for ' + (f.taskType()?.name ?? '') + ' #' + (f.task()!.id)"
+    (closed)="f.requestCancel()"
+  >
+    <section class="summary-card">
+      <div class="summary-stepper">
+        <tp-status-stepper
+          [statuses]="f.taskType()!.statuses"
+          [current]="f.task()!.status"
+          [target]="f.targetStatus()"
+          [closed]="f.task()!.isClosed"
+          density="comfortable"
+          [showLabels]="true"
+        />
+      </div>
+
+      <dl class="summary-meta">
+        <div>
+          <dt>Task Type</dt>
+          <dd>{{ f.taskType()?.name ?? f.task()!.taskTypeId }}</dd>
+        </div>
+        <div>
+          <dt>Task ID</dt>
+          <dd><code class="mono">{{ f.shortId() }}</code></dd>
+        </div>
+        <div>
+          <dt>Updated</dt>
+          <dd class="muted" [attr.title]="f.updatedAbsolute()">{{ f.updatedRelative() }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    @if (f.task()!.isClosed) {
+      <tp-empty-state
+        icon="lock"
+        title="This task is closed"
+        description="Closed tasks are immutable. Re-open in the backend if a change is genuinely needed."
+      />
+    } @else if (f.statusOptions().length <= 1) {
+      <tp-empty-state
+        icon="info"
+        title="No transitions available"
+        description="There are no other statuses defined for this task type."
+      />
+    } @else {
+      <form [formGroup]="f.outerForm" (ngSubmit)="f.onSubmitRequest()" novalidate id="change-status-form">
+        <section class="section">
+          <header class="section-header">
+            <h3 class="section-title">Status actions</h3>
+          </header>
+
+          <div class="status-picker">
+            @for (opt of f.statusOptions(); track opt.status) {
+              <button
+                type="button"
+                class="status-opt"
+                [class.is-selected]="f.targetStatus() === opt.status || (f.targetStatus() === null && opt.direction === 'current')"
+                [class.is-current]="opt.direction === 'current'"
+                [class.is-disabled]="opt.disabled && opt.direction !== 'current'"
+                [disabled]="opt.disabled"
+                [attr.aria-pressed]="f.targetStatus() === opt.status"
+                [attr.title]="opt.disabledReason ?? null"
+                (click)="f.pickStatus(opt)"
+              >
+                <span class="status-opt-num">{{ opt.status }}</span>
+                <span class="status-opt-name">{{ opt.name }}</span>
+                @switch (opt.direction) {
+                  @case ('current') {
+                    <tp-badge tone="success" variant="soft">Current</tp-badge>
+                  }
+                  @case ('forward') {
+                    <tp-badge tone="neutral" variant="soft">
+                      Forward
+                      <tp-icon name="arrow-right" [size]="10" />
+                    </tp-badge>
+                  }
+                  @case ('backward') {
+                    <tp-badge tone="accent" variant="soft">
+                      <tp-icon name="corner-down-left" [size]="10" />
+                      Backward
+                    </tp-badge>
+                  }
+                  @case ('invalid') {
+                    <tp-badge tone="warning" variant="soft">
+                      <tp-icon name="lock" [size]="10" />
+                      Blocked
+                    </tp-badge>
+                  }
+                }
+              </button>
+            }
+            @if (f.canCloseTask()) {
+              <button
+                type="button"
+                class="status-opt is-close"
+                [disabled]="store.loading()"
+                (click)="f.requestClose()"
+              >
+                <span class="status-opt-num">
+                  <tp-icon name="lock" [size]="14" />
+                </span>
+                <span class="status-opt-name">Close task</span>
+                <tp-badge tone="neutral" variant="soft">
+                  <tp-icon name="check" [size]="10" />
+                  Final
+                </tp-badge>
+              </button>
+            }
+          </div>
+
+        </section>
+
+        <div class="divider"></div>
+
+        <section class="section">
+          <div class="step-grid" [class.is-single-column]="f.cdf.fields().length === 0">
+            @if (f.cdf.fields().length > 0 && f.cdf.form()) {
+              <div class="step-grid-left">
+                <tp-dynamic-form
+                  [fields]="f.cdf.fields()"
+                  [form]="f.cdf.form()!"
+                />
+              </div>
+            }
+            <div class="step-grid-right">
+              <tp-field label="Assignee" [errors]="f.assigneeErrors()">
+                <tp-user-picker
+                  [users]="store.users()"
+                  [value]="f.nextAssigneeId()"
+                  placeholder="Pick the assignee"
+                  panelLabel="Choose assignee"
+                  (valueChange)="f.pickAssignee($event)"
+                />
+              </tp-field>
+            </div>
+          </div>
+        </section>
+      </form>
+    }
+
+    <ng-container footer>
+      @if (!f.task()!.isClosed) {
+        <tp-button variant="ghost" type="button" (click)="f.requestCancel()">Cancel</tp-button>
+      }
+      @if (!f.task()!.isClosed && f.statusOptions().length > 1) {
+        @if (f.targetIsBackward()) {
+          <tp-button
+            variant="primary"
+            type="button"
+            leadingIcon="arrow-left"
+            [loading]="store.loading()"
+            (click)="f.onSubmitRequest()"
+          >Move back to {{ f.targetStatusName() }}</tp-button>
+        } @else {
+          <tp-button
+            variant="primary"
+            type="button"
+            trailingIcon="arrow-right"
+            [loading]="store.loading()"
+            (click)="f.onSubmitRequest()"
+          >
+            @if (f.targetStatus() !== null) {
+              Move to {{ f.targetStatusName() }}
+            } @else {
+              Save changes
+            }
+          </tp-button>
+        }
+      }
+    </ng-container>
+  </tp-modal>
+
+  @if (f.dialog.is('close')) {
+    <tp-confirm-modal
+      title="Close this task?"
+      confirmLabel="Close task"
+      confirmLeadingIcon="check"
+      [loading]="store.loading()"
+      (confirmed)="f.confirmDialog()"
+      (cancelled)="f.cancelDialog()"
+    >
+      Closing applies right away and makes the task immutable. You can’t move it through any more statuses afterward.
+    </tp-confirm-modal>
+  }
+
+  @if (f.pendingStatusSwitch(); as pending) {
+    <tp-confirm-modal
+      title="Discard your draft?"
+      confirmLabel="Discard and switch"
+      cancelLabel="Keep editing"
+      (confirmed)="f.confirmStatusSwitch()"
+      (cancelled)="f.cancelStatusSwitch()"
+    >
+      You have unsaved input for <strong>{{ f.targetStatusName() }}</strong>. Switching to
+      <strong>{{ pending.direction === 'current' ? 'the current step' : pending.name }}</strong>
+      will discard that draft. Continue?
+    </tp-confirm-modal>
+  }
+
+  @if (f.dialog.is('cancel')) {
+    <tp-confirm-modal
+      [title]="f.discard.title"
+      [confirmLabel]="f.discard.confirmLabel"
+      confirmVariant="danger"
+      [cancelLabel]="f.discard.cancelLabel"
+      (confirmed)="f.confirmDialog()"
+      (cancelled)="f.cancelDialog()"
+    >
+      {{ f.discard.body }}
+    </tp-confirm-modal>
+  }
+
+  @if (f.dialog.is('backward')) {
+    <tp-confirm-modal
+      [title]="'Move back to ' + f.targetStatusName() + '?'"
+      confirmLabel="Move back"
+      confirmLeadingIcon="arrow-left"
+      [loading]="store.loading()"
+      (confirmed)="f.confirmDialog()"
+      (cancelled)="f.cancelDialog()"
+    >
+      This task will return to <strong>{{ f.targetStatusName() }}</strong> and reassign
+      to the owner you selected. Every step above this one will be
+      retired - the data is preserved for the audit log but no longer
+      surfaces in the live view. Continue?
+    </tp-confirm-modal>
+  }
+
+  @if (f.dialog.is('forward')) {
+    <tp-confirm-modal
+      [title]="'Move to ' + f.targetStatusName() + '?'"
+      [confirmLabel]="'Move to ' + f.targetStatusName()"
+      confirmTrailingIcon="arrow-right"
+      [loading]="store.loading()"
+      (confirmed)="f.confirmDialog()"
+      (cancelled)="f.cancelDialog()"
+    >
+      This task will advance to <strong>{{ f.targetStatusName() }}</strong> and the
+      data you entered will be saved against it. Continue?
+    </tp-confirm-modal>
+  }
+
+  @if (f.dialog.is('in-place')) {
+    <tp-confirm-modal
+      title="Save changes to this step?"
+      confirmLabel="Save changes"
+      confirmLeadingIcon="check"
+      [loading]="store.loading()"
+      (confirmed)="f.confirmDialog()"
+      (cancelled)="f.cancelDialog()"
+    >
+      The <strong>{{ f.currentStatusName() }}</strong> step's data and assignee will be
+      updated in place. Continue?
+    </tp-confirm-modal>
+  }
+}

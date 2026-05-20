@@ -1,0 +1,20 @@
+:host { display: inline-flex; }
+
+.skeleton {
+  display: inline-block;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunk);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 200px 100%;
+  animation: tp-shimmer 1.2s ease-in-out infinite;
+}
+
+.shape-block { border-radius: var(--radius-md); }
+.shape-circle { border-radius: 50%; }
+.shape-line { border-radius: var(--radius-full); }

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>TaskPlatform</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Extensible task management — model your task types, drive them through their lifecycle.">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+</head>
+<body>
+  <app-root>
+    
+    <div class="boot-shim" aria-hidden="true">
+      <div class="boot-shim-bar"></div>
+      <div class="boot-shim-card"></div>
+      <div class="boot-shim-card"></div>
+      <div class="boot-shim-card"></div>
+    </div>
+    <style>
+      .boot-shim {
+        padding: 24px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .boot-shim-bar {
+        height: 48px;
+        background: #f1f2f5;
+        border-radius: 8px;
+        margin-bottom: 24px;
+        animation: boot-shimmer 1.2s ease-in-out infinite;
+      }
+      .boot-shim-card {
+        height: 56px;
+        background: #f7f8fa;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        animation: boot-shimmer 1.2s ease-in-out infinite;
+      }
+      @keyframes boot-shimmer {
+        0%, 100% { opacity: 0.55; }
+        50% { opacity: 0.85; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-shim-bar, .boot-shim-card { animation: none; }
+      }
+    </style>
+  </app-root>
+</body>
+</html>

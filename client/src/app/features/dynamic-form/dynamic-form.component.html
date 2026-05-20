@@ -1,0 +1,70 @@
+<div [formGroup]="form()" class="dynamic-form">
+  @for (field of fields(); track field.name) {
+    <tp-field
+      [label]="field.name | humanLabel"
+      [required]="true"
+      [errors]="fieldErrors(field.name)"
+      [controlId]="field.name"
+    >
+      @if (field.itemCount > 1) {
+        <div [formArrayName]="field.name" class="string-array">
+          @for (control of arrayControls(field.name); track $index) {
+            <div class="array-row">
+              @switch (field.kind) {
+                @case ('Number') {
+                  <input
+                    class="tp-input"
+                    [class.is-invalid]="isItemInvalid(field.name, $index)"
+                    type="number"
+                    [formControlName]="$index"
+                    [attr.aria-invalid]="isItemInvalid(field.name, $index) ? 'true' : null"
+                    [attr.aria-label]="(field.name | humanLabel) + ' item ' + ($index + 1)"
+                    inputmode="decimal"
+                  />
+                }
+                @default {
+                  <input
+                    class="tp-input"
+                    [class.is-invalid]="isItemInvalid(field.name, $index)"
+                    type="text"
+                    [formControlName]="$index"
+                    [attr.maxlength]="field.max ?? maxLength"
+                    [attr.aria-invalid]="isItemInvalid(field.name, $index) ? 'true' : null"
+                    [attr.aria-label]="(field.name | humanLabel) + ' item ' + ($index + 1)"
+                  />
+                }
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        @switch (field.kind) {
+          @case ('Number') {
+            <input
+              class="tp-input"
+              [class.is-invalid]="isControlInvalid(field.name)"
+              type="number"
+              [id]="field.name"
+              [formControlName]="field.name"
+              [attr.aria-invalid]="isControlInvalid(field.name) ? 'true' : null"
+              inputmode="decimal"
+            />
+          }
+          @default {
+            <input
+              class="tp-input"
+              [class.is-invalid]="isControlInvalid(field.name)"
+              type="text"
+              [id]="field.name"
+              [formControlName]="field.name"
+              [attr.aria-invalid]="isControlInvalid(field.name) ? 'true' : null"
+              [attr.maxlength]="field.max ?? maxLength"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          }
+        }
+      }
+    </tp-field>
+  }
+</div>

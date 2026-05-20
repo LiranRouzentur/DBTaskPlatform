@@ -1,0 +1,21 @@
+# Keep build contexts small + reproducible.
+**/bin/
+**/obj/
+**/node_modules/
+**/.angular/
+**/dist/
+**/.vs/
+**/.idea/
+**/.vscode/
+.git/
+.gitignore
+.dockerignore
+docker-compose.yml
+**/*.user
+**/*.suo
+**/*.cache
+**/*.log
+**/*.md
+!CLAUDE.md
+.claude/
+scripts/
