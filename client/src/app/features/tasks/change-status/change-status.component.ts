@@ -23,10 +23,17 @@ import { DynamicFormComponent } from '../../dynamic-form/dynamic-form.component'
 import { ChangeStatusFacade } from './change-status.facade';
 import { CustomDataFormController } from './custom-data-form.controller';
 
+/** Re-exported so other features can type against the presenter's option shape without importing it directly. */
 export type { StatusDirection, StatusOptionView } from './change-status.presenter';
+/** Re-exported so templates / tests can name the confirm-dialog states served by the facade. */
 export type { ActiveConfirmDialog } from './change-status.facade';
 
-/** Modal route for moving/closing/editing a task. Logic in `ChangeStatusFacade` + `CustomDataFormController`. */
+/**
+ * Container component for the change-status modal. Mounted as a child route of `/tasks` and opened/closed via
+ * `router.navigate(..., { skipLocationChange: true })` (see .claude/rules/frontend.md §5). This file is intentionally
+ * thin — UX orchestration lives in `ChangeStatusFacade`, pure derivations in `ChangeStatusPresenter`, and the
+ * per-status form lifecycle in `CustomDataFormController`.
+ */
 @Component({
   selector: 'tp-change-status',
   standalone: true,
@@ -51,14 +58,18 @@ export type { ActiveConfirmDialog } from './change-status.facade';
 })
 export class ChangeStatusComponent {
   // ─── Dependencies ────────────────────────────────────────────────────────
+  /** Per-route facade (provided in component `providers`) — owns all orchestration state for this modal. */
   protected readonly f = inject(ChangeStatusFacade);
+  /** Convenience alias exposed by the facade so templates can read shared store signals without a second injection. */
   protected readonly store = this.f.storeRef;
 
   // ─── Inputs ──────────────────────────────────────────────────────────────
+  /** Task id from the `:id` route segment, transformed to `number` via Angular's `withComponentInputBinding()`. */
   readonly id = input(0, { transform: numberAttribute });
 
   // ─── Lifecycle ───────────────────────────────────────────────────────────
   constructor() {
+    // Propagate route-driven id changes into the facade so it can (re)load the detail and rebuild the form.
     effect(() => this.f.setTaskId(this.id()));
   }
 }

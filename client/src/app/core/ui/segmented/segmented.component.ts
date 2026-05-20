@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, model } from '@angular/core';
 
+/** Single segment in a `tp-segmented` control. `count` renders a small pill next to the label (used for tab counts). */
 export interface SegmentedOption<T extends string> {
   readonly value: T;
   readonly label: string;
@@ -38,13 +39,18 @@ export interface SegmentedOption<T extends string> {
   styleUrl: './segmented.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/** Tab-strip style switcher — used for the open/closed/all state filter. Two-way bound via `model()`. */
 export class SegmentedComponent<T extends string = string> {
   // ─── Inputs / Models ─────────────────────────────────────────────────────
+  /** Ordered options to display. Type-parameter ensures the value matches one of the option values. */
   readonly options = input.required<readonly SegmentedOption<T>[]>();
+  /** Two-way bound current selection — parent reads via `[(value)]` or signal binding. */
   readonly value = model.required<T>();
+  /** Group-level aria-label applied to the `role="tablist"` container. */
   readonly ariaLabel = input<string>('Segmented');
 
   // ─── Public API / UI Actions ─────────────────────────────────────────────
+  /** ARIA-pattern keyboard model: arrows cycle, Home/End jump to ends, other keys pass through. */
   protected onKeydown(event: KeyboardEvent): void {
     const opts = this.options();
     if (opts.length === 0) return;

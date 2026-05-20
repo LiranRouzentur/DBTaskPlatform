@@ -4,6 +4,7 @@ import { ToastService, ToastTone } from '../../services/toast.service';
 import { IconButtonComponent } from '../icon-button/icon-button.component';
 import { IconComponent, IconName } from '../icon/icon.component';
 
+/** Per-tone leading icon — pairs with the colour theme to signal the message family at a glance. */
 const ICON_BY_TONE: Record<ToastTone, IconName> = {
   success: 'check-circle',
   info: 'info',
@@ -46,13 +47,16 @@ export class ToastHostComponent {
   private readonly svc = inject(ToastService);
 
   // ─── Bridges ─────────────────────────────────────────────────────────────
+  /** Re-exposes the service's toast list to the template — single live signal, no local mirror. */
   protected readonly toasts = this.svc.toasts;
 
   // ─── Public API / UI Actions ─────────────────────────────────────────────
+  /** Tone → icon name lookup used by the template. */
   protected iconFor(tone: ToastTone): IconName {
     return ICON_BY_TONE[tone];
   }
 
+  /** Manual dismissal — delegates to the service (which also handles auto-dismiss timers). */
   protected dismiss(id: number): void {
     this.svc.dismiss(id);
   }

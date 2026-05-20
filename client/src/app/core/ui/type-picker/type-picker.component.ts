@@ -12,6 +12,7 @@ import {
 import { PickerOverlayBase } from '../picker/picker-overlay.base';
 import { IconComponent, IconName } from '../icon/icon.component';
 
+/** One row in the type-picker list — `value` is the task-type id (or `allValue` for the "All Types" pseudo-row). */
 export interface TypePickerOption {
   readonly value: number;
   readonly label: string;
@@ -78,36 +79,50 @@ export interface TypePickerOption {
   styleUrl: './type-picker.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/** Popover task-type filter (toolbar) — inherits portal/positioning/keyboard from `PickerOverlayBase`. */
 export class TypePickerComponent extends PickerOverlayBase<number> {
   // ─── Inputs / Outputs ────────────────────────────────────────────────────
+  /** Options to render in the panel — typically the type catalog plus an "All Types" pseudo-row. */
   readonly options = input.required<readonly TypePickerOption[]>();
+  /** Currently selected option's value — drives the trigger label and the panel's checkmark. */
   readonly value = input.required<number>();
+  /** Sentinel for "no filter" / all-types row (per `ALL_TYPES` constant in filters.model). */
   readonly allValue = input<number>(-1);
+  /** Accessible name applied to both the panel and its inner listbox. */
   readonly panelLabel = input<string>('Filter by type');
+  /** Icon used on the trigger and the "all" row when the all-value is selected. */
   readonly leadingIcon = input<IconName>('layers');
+  /** Icon-only trigger style (toolbar mode); when false, the trigger also shows the label text. */
   readonly compact = input<boolean>(false);
+  /** Hides the panel and refuses to open on click — used while a parent is loading. */
   readonly disabled = input<boolean>(false);
 
+  /** Emits the picked option's value — parent forwards into the store as the active filter. */
   readonly valueChange = output<number>();
 
   // ─── View Queries ────────────────────────────────────────────────────────
+  /** Template handed to the base class; rendered into a body portal on open. */
   @ViewChild('panelTmpl', { static: true })
   protected panelTmpl!: TemplateRef<unknown>;
 
   // ─── Writable Signals ────────────────────────────────────────────────────
+  /** Keyboard-cursor position inside the open panel — independent from the committed `value`. */
   protected readonly activeValue = signal<number | null>(null);
 
   // ─── Computed ────────────────────────────────────────────────────────────
+  /** Label of the currently-selected option — empty string when the value isn't in the options list. */
   protected readonly selectedLabel = computed(() => {
     const v = this.value();
     return this.options().find((o) => o.value === v)?.label ?? '';
   });
 
+  /** Trigger icon — uses the generic leading icon when "all" is selected, otherwise a single-type bullet. */
   protected readonly triggerIcon = computed<IconName>(() =>
     this.value() === this.allValue() ? this.leadingIcon() : 'circle-dot',
   );
 
   // ─── Subclass contract ───────────────────────────────────────────────────
+  /** Narrower min-width than the base default — type lists are short labels. */
   protected override getMinWidth(): number {
     return 200;
   }
@@ -116,6 +131,7 @@ export class TypePickerComponent extends PickerOverlayBase<number> {
     return this.disabled();
   }
 
+  /** Seeds the keyboard cursor on the currently-selected option so ArrowDown lands intuitively. */
   protected onBeforeOpen(): void {
     this.activeValue.set(this.value());
   }
@@ -128,6 +144,7 @@ export class TypePickerComponent extends PickerOverlayBase<number> {
     this.activeValue.set(id);
   }
 
+  /** Every option is keyboard-reachable — no filtering applied. */
   protected getNavigableIds(): readonly number[] {
     return this.options().map((o) => o.value);
   }

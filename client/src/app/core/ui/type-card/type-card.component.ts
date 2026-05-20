@@ -23,12 +23,17 @@ import { TaskTypeMetadata } from '../../models/task-type-metadata.model';
   styleUrl: './type-card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/** Tile representing one task type in the create-task picker. Shows the type name and its workflow length. */
 export class TypeCardComponent {
+  /** Task-type metadata to display — drives name, stage count, and the emitted id on click. */
   readonly type = input.required<TaskTypeMetadata>();
+  /** When true, paints the card as the active selection (also reflected via `aria-pressed`). */
   readonly selected = input<boolean>(false);
 
+  /** Emits the picked type's id — parent decides what "select" means (typically advances the wizard). */
   readonly picked = output<number>();
 
+  /** Pluralised label like "1 stage" / "4 stages" — derived from the number of statuses on this type. */
   protected readonly stagesLabel = computed(() => {
     const n = this.type().statuses.length;
     return n === 1 ? '1 stage' : `${n} stages`;

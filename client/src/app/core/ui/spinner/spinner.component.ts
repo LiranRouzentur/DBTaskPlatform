@@ -50,7 +50,10 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/** Looping SVG spinner used inside buttons, modals, and list rows. Respects `prefers-reduced-motion` via CSS. */
 export class SpinnerComponent {
+  /** Pixel dimensions for width + height — viewBox is fixed, so this just scales the glyph. */
   readonly size = input<number>(16);
+  /** Accessible name — surfaced via `aria-label` on the `role="status"` SVG. */
   readonly label = input<string>('Loading');
 }

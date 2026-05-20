@@ -2,8 +2,10 @@ import { AbstractControl, FormArray, ValidationErrors } from '@angular/forms';
 
 // Translates validator error keys to display strings. The `server` key carries messages already
 // projected from 422 responses; those render verbatim instead of going through the lookup.
+// Per frontend rules §4: these are UX hints — the server is the source of truth for validation.
 
-/** Maps one control's ValidationErrors bag to messages in stable order (avoids flicker). */
+/** Maps one control's ValidationErrors bag to messages in stable order (avoids flicker on re-render).
+ *  Order matches the order of `if` branches below; new error keys must be appended deterministically. */
 export function formatValidationErrors(errors: ValidationErrors | null): readonly string[] {
   if (!errors) return [];
   const out: string[] = [];
@@ -29,13 +31,15 @@ export function formatValidationErrors(errors: ValidationErrors | null): readonl
     out.push(`Must be at most ${limit}.`);
   }
   if (errors['server']) {
+    // `server` messages come from a 422 ProblemDetails projection — already user-ready, render verbatim.
     const serverMessages = errors['server'] as readonly string[];
     out.push(...serverMessages);
   }
   return out;
 }
 
-/** Walks a control; FormArray children get `Item N:` prefix to match the server format. */
+/** Walks a control; FormArray children get `Item N:` prefix to match the server format.
+ *  Used by `<tp-field>` to render per-control error lists for both scalar and array fields. */
 export function collectFieldErrors(control: AbstractControl): readonly string[] {
   const messages = [...formatValidationErrors(control.errors)];
   if (control instanceof FormArray) {

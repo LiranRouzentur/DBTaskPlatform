@@ -12,18 +12,29 @@ import { TaskFormBuilder } from '../../../core/validators/task-form-builder.serv
 
 import { ChangeStatusPresenter } from './change-status.presenter';
 
-/** Per-status dynamic form lifecycle: rebuild, history prefill, 422 projection, hasChanges. */
+/**
+ * Stateful controller owning the per-status `FormGroup` for the change-status modal. Pure logic unit — the facade
+ * delegates here so the FormGroup lifecycle (build / clear / prefill / 422-projection) lives in one place.
+ */
 @Injectable()
 export class CustomDataFormController {
   // ─── Dependencies ────────────────────────────────────────────────────────
+  /** Builds a `FormGroup` from `FieldSpecMetadata[]` — scalar for ItemCount=1, fixed-length FormArray for >1. */
   private readonly formBuilder = inject(TaskFormBuilder);
+  /** Pure helper for history prefill + normalisation — reused so we don't duplicate the merge logic. */
   private readonly presenter = inject(ChangeStatusPresenter);
 
   // ─── Writable Signals ────────────────────────────────────────────────────
+  /** Field descriptors for the currently-built form; mirrored as a signal so templates re-render on rebuild. */
   readonly fields = signal<readonly FieldSpecMetadata[]>([]);
+  /** The currently-bound FormGroup, or null when no status is selected (initial render, after clear). */
   readonly form = signal<FormGroup | null>(null);
 
   // ─── Public API ──────────────────────────────────────────────────────────
+  /**
+   * Rebuilds the per-status form for the given target (or current status if target is null). Prefills from history
+   * unless the status is retired. Returns the assignee suggestion taken from history (null when none).
+   */
   rebuild(
     task: TaskDetail | null,
     type: TaskTypeMetadata | null,
@@ -53,30 +64,39 @@ export class CustomDataFormController {
     return assigneeFromHistory ?? null;
   }
 
+  /** Resets the controller to "no form bound" — called before installing a freshly-built FormGroup. */
   clear(): void {
     this.fields.set([]);
     this.form.set(null);
   }
 
+  /** Returns the request-shape `customData` payload for the current form, or `{}` when none is bound. */
   normalize(): Record<string, unknown> {
     const f = this.form();
     return f ? this.presenter.normalizeCustomData(f) : {};
   }
 
+  /** Marks every control as touched so error messages light up — invoked right before any submit attempt. */
   markAllAsTouched(): void {
     this.form()?.markAllAsTouched();
   }
 
+  /** True when any control fails its client-side validators; submit is gated on this. */
   isInvalid(): boolean {
     const f = this.form();
     return f != null && f.invalid;
   }
 
+  /** True when the user has modified any field — drives the "discard changes?" prompt. */
   isDirty(): boolean {
     const f = this.form();
     return f != null && f.dirty;
   }
 
+  /**
+   * Compares the staged payload against the persisted task. Returns true if status changed, assignee changed,
+   * or the per-status customData differs (deep-compared). Used to short-circuit "no changes to save" submits.
+   */
   hasChanges(
     task: TaskDetail,
     targetStatus: number,
@@ -89,8 +109,10 @@ export class CustomDataFormController {
     return !deepEqual(customData, currentCustomData);
   }
 
+  /** Projects 422 `fieldErrors` from `ApiError` onto matching controls as `{ server: messages }`. */
   applyServerFieldErrors(err: ApiError): void {
     if (err.kind !== 'validation' || !err.fieldErrors) return;
+    // untracked() — we're reading `form` from a callback that may run inside someone else's reactive context.
     const form = untracked(() => this.form());
     if (!form) return;
     for (const [field, messages] of Object.entries(err.fieldErrors)) {

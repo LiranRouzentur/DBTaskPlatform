@@ -1,8 +1,12 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-/** Identifier → display label ("branchName" → "Branch Name") for dynamic-form field titles. */
+/**
+ * Identifier → display label ("branchName" → "Branch Name") for dynamic-form field titles.
+ * Pure pipe — safe to reuse on every change-detection cycle since output depends only on input.
+ */
 @Pipe({ name: 'humanLabel', standalone: true, pure: true })
 export class HumanizeLabelPipe implements PipeTransform {
+  /** Returns empty string on null/undefined/blank input so templates can bind without optional chaining. */
   transform(value: string | null | undefined): string {
     if (!value) return '';
     const cleaned = value
@@ -15,6 +19,7 @@ export class HumanizeLabelPipe implements PipeTransform {
       .trim();
     if (cleaned.length === 0) return '';
 
+    // Capitalise first letter only — leave the rest of the casing intact (acronyms remain uppercase).
     return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
   }
 }

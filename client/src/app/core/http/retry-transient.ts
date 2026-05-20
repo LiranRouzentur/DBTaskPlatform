@@ -1,8 +1,13 @@
 import { Observable, retry, throwError, timer } from 'rxjs';
 import { ApiError } from '../models/api-error.model';
 
-// RxJS operator for idempotent GETs only (NEVER mutations). Runs after the interceptor chain,
-// so failures are already typed ApiError when the kind-check fires. Backoff: 300ms × 3^(attempt-1).
+/**
+ * RxJS operator factory: retries transient network/server failures with exponential backoff.
+ * Wrap idempotent GETs only — mutations (create/changeStatus/close/updateStep) are NEVER retried
+ * because idempotency is not guaranteed (see .claude/rules/frontend.md §3). Runs AFTER the
+ * interceptor chain, so errors are already typed ApiError by the time the kind-check fires.
+ * Backoff schedule: 300ms × 3^(attempt-1) — 300ms, 900ms by default (count=2).
+ */
 export function retryTransient<T>(count = 2): (source: Observable<T>) => Observable<T> {
   return (source: Observable<T>) =>
     source.pipe(
@@ -10,10 +15,11 @@ export function retryTransient<T>(count = 2): (source: Observable<T>) => Observa
         count,
         delay: (error: unknown, attempt) => {
           const apiError = error as ApiError;
+          // Only 'network' (status 0) and 'server' (5xx) are retried; 4xx are deterministic.
           if (apiError?.kind !== 'network' && apiError?.kind !== 'server') {
             return throwError(() => error);
           }
-          
+
           return timer(300 * Math.pow(3, attempt - 1));
         },
       }),

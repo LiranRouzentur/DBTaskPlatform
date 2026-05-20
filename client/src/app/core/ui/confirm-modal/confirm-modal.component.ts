@@ -37,14 +37,23 @@ import { ModalComponent } from '../modal/modal.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfirmModalComponent {
+  /** Dialog title — surfaced as `aria-labelledby` on the modal surface. */
   readonly title = input.required<string>();
+  /** Label on the affirmative button (e.g. "Discard", "Delete", "Close task"). */
   readonly confirmLabel = input.required<string>();
+  /** Label on the dismissive button; the default fits most "are you sure" prompts. */
   readonly cancelLabel = input<string>('Cancel');
+  /** Visual emphasis for the affirmative button — set to `danger` for destructive prompts. */
   readonly confirmVariant = input<ButtonVariant>('primary');
+  /** Optional icon before the confirm label — pairs with the variant to clarify intent. */
   readonly confirmLeadingIcon = input<IconName | null>(null);
+  /** Optional icon after the confirm label (e.g. arrow-right for navigation). */
   readonly confirmTrailingIcon = input<IconName | null>(null);
+  /** When true, the confirm button shows a spinner and is non-interactive — used while a mutation is in flight. */
   readonly loading = input<boolean>(false);
 
+  /** Fired when the user accepts — caller performs the actual destructive/affirmative action. */
   readonly confirmed = output<void>();
+  /** Fired when the user dismisses (cancel button, backdrop, Escape, or the modal close button). */
   readonly cancelled = output<void>();
 }

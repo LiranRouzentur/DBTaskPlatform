@@ -2,7 +2,8 @@ import { Signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormControlStatus } from '@angular/forms';
 
-/** Picker → form setter. Marks touched + dirty so validators surface and dirty-guard activates. */
+/** Picker → form setter. Marks touched + dirty so validators surface and dirty-guard activates.
+ *  Plain `setValue` alone would leave the control pristine, hiding validation errors until blur. */
 export function setControl<T>(ctrl: FormControl<T>, value: T): void {
   ctrl.setValue(value);
   ctrl.markAsTouched();
@@ -14,7 +15,7 @@ export function formSignal<T>(ctrl: FormControl<T>): Signal<T> {
   return toSignal(ctrl.valueChanges, { initialValue: ctrl.value });
 }
 
-/** Status counterpart of `formSignal`. Drives valid/invalid computeds without polling. */
+/** Status counterpart of `formSignal`. Drives valid/invalid computeds without polling `ctrl.status`. */
 export function formStatusSignal(ctrl: AbstractControl): Signal<FormControlStatus> {
   return toSignal(ctrl.statusChanges, { initialValue: ctrl.status });
 }

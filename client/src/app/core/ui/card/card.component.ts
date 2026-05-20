@@ -29,10 +29,16 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   styleUrl: './card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/** Generic surface container with optional header (eyebrow / title / subtitle / projected actions). */
 export class CardComponent {
+  /** Primary title rendered as `<h3>` — when omitted (and no `hasHeader`), the entire header block is skipped. */
   readonly heading = input<string | null>(null);
+  /** Optional supporting text below the heading. */
   readonly subheading = input<string | null>(null);
+  /** Tiny uppercase label above the heading (e.g. "Section", "Step 2"). */
   readonly eyebrow = input<string | null>(null);
+  /** Adds default body padding; turn off when the card hosts edge-to-edge content like a table. */
   readonly padded = input<boolean>(true);
+  /** Forces the header slot to render even when heading/subheading/eyebrow are empty — used when only `[actions]` is projected. */
   readonly hasHeader = input<boolean>(false);
 }

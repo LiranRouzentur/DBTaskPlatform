@@ -10,9 +10,14 @@ import { UserPickerComponent } from '../../../core/ui/user-picker/user-picker.co
 
 import { CreateTaskFacade } from './create-task.facade';
 
+/** Re-exported so other features can name the open/cancel confirm-dialog states. */
 export type { ActiveCreateTaskDialog } from './create-task.facade';
 
-/** Modal route for creating a new task. Logic in `CreateTaskFacade`; new tasks start at status 1. */
+/**
+ * Container component for the create-task modal — opened as a child route of `/tasks` and routed away via
+ * `router.navigate(..., { skipLocationChange: true })` (see .claude/rules/frontend.md §5). Logic lives in
+ * `CreateTaskFacade`; the template is data-driven so adding a task type requires no Angular changes.
+ */
 @Component({
   selector: 'tp-create-task',
   standalone: true,
@@ -31,6 +36,8 @@ export type { ActiveCreateTaskDialog } from './create-task.facade';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CreateTaskComponent {
+  /** Per-route facade — owns the form, the dialog state machine, and submission. */
   protected readonly f = inject(CreateTaskFacade);
+  /** Shared store alias re-exposed via the facade so templates can read `users()` / `taskTypes()` directly. */
   protected readonly store = this.f.storeRef;
 }

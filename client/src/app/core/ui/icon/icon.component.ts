@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
+/** SVG `<path>` markup per icon name. Inlined (no sprite sheet) so the app ships zero icon HTTP requests. */
 const ICONS: Record<string, string> = {
   'chevron-down':
     '<polyline points="6 9 12 15 18 9"/>',
@@ -70,6 +71,7 @@ const ICONS: Record<string, string> = {
     '<path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z"/>',
 };
 
+/** Union of valid icon names — derived from `ICONS` so the compiler catches typos at every call site. */
 export type IconName = keyof typeof ICONS;
 
 @Component({
@@ -94,16 +96,21 @@ export type IconName = keyof typeof ICONS;
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/** Inline-SVG icon renderer. Markup comes from the typed `ICONS` map — no external assets. */
 export class IconComponent {
   // ─── Dependencies ────────────────────────────────────────────────────────
   private readonly sanitizer = inject(DomSanitizer);
 
   // ─── Inputs ──────────────────────────────────────────────────────────────
+  /** Which icon to render. Compile-time-checked via `IconName`. */
   readonly name = input.required<IconName>();
+  /** Pixel dimensions for both width and height — viewBox is fixed at 24, so this just scales the glyph. */
   readonly size = input<number>(16);
+  /** When provided, the SVG carries `role="img"` + `aria-label` for screen readers; otherwise it's `aria-hidden`. */
   readonly label = input<string | null>(null);
 
   // ─── Computed ────────────────────────────────────────────────────────────
+  /** Fully-formed SVG string trusted via DomSanitizer — bypass is safe because content comes from a static, typed map. */
   protected readonly markup = computed<SafeHtml>(() => {
     const inner = ICONS[this.name()] ?? '';
     const size = this.size();
@@ -117,6 +124,7 @@ export class IconComponent {
   });
 }
 
+/** Minimal HTML-attribute escaping for the `aria-label` value before it gets serialised into the SVG string. */
 function escapeAttr(value: string): string {
   return value
     .replace(/&/g, '&amp;')

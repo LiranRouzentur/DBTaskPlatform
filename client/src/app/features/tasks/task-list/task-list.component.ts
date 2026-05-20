@@ -17,7 +17,11 @@ import { UserPickerComponent } from '../../../core/ui/user-picker/user-picker.co
 
 import { TaskListFacade } from './task-list.facade';
 
-/** Main page. Logic in `TaskListFacade`; hosts `<router-outlet>` for modal child routes. */
+/**
+ * Top-level page component for `/tasks`. The container is intentionally thin: orchestration + computed view-models
+ * live in `TaskListFacade`. Hosts a `<router-outlet>` because the create/change-status modals are mounted as child
+ * routes (see .claude/rules/frontend.md §5).
+ */
 @Component({
   selector: 'tp-task-list',
   standalone: true,
@@ -43,7 +47,10 @@ import { TaskListFacade } from './task-list.facade';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TaskListComponent {
+  /** Per-route facade owning rows, sort, filter wiring, and close-row confirmation. */
   protected readonly f = inject(TaskListFacade);
+  /** Shared signal-store alias surfaced via the facade so templates don't need a second injection. */
   protected readonly store = this.f.storeRef;
+  /** Sentinel for "All Types" in the type-picker — re-exposed so the template can compare without magic numbers. */
   protected readonly ALL_TYPES = this.f.ALL_TYPES;
 }

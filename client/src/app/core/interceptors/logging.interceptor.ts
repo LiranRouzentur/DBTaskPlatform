@@ -4,16 +4,22 @@ import { tap } from 'rxjs';
 import { ApiError } from '../models/api-error.model';
 import { FrontendLogger } from '../logging/frontend-logger.service';
 
-// Sits between correlationId and error. By the time tap.error runs, errorInterceptor has
-// already converted the failure to ApiError, so the typed access below is safe.
+/**
+ * MIDDLE of the interceptor chain (order: correlationId → logging → error, innermost → outermost).
+ * By the time tap.error fires, errorInterceptor has already converted the HttpErrorResponse into
+ * a typed ApiError — so the `apiError.kind / status / rule` access below is safe and typed.
+ * Logs structured request outcomes (method, path, status, duration, correlationId) for triage.
+ */
 export const loggingInterceptor: HttpInterceptorFn = (req, next) => {
   const logger = inject(FrontendLogger);
+  // performance.now is monotonic — safe for duration measurement even under clock skew.
   const start = performance.now();
   const correlationId = req.headers.get('X-Correlation-Id') ?? '';
 
   return next(req).pipe(
     tap({
       next: (event) => {
+        // Only log on the final HttpResponse, not intermediate HttpEvents (e.g. upload progress).
         if (event instanceof HttpResponse) {
           logger.info({
             method: req.method,

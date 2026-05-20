@@ -2,10 +2,14 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { catchError, throwError } from 'rxjs';
 import { ApiError, ApiErrorKind, ProblemDetails } from '../models/api-error.model';
 
-// Normalises every HttpErrorResponse → typed ApiError. The server's 422 ProblemDetails carries
-// field errors under "errors" (RFC 7807); we expose them as ApiError.fieldErrors. The rename is
-// intentional — keep both sides.
+/**
+ * OUTERMOST in the interceptor chain (order: correlationId → logging → error). Normalises every
+ * HttpErrorResponse into a typed ApiError so stores/components never see raw HttpErrorResponse.
+ * Server 422 ProblemDetails carries field errors under `errors` (RFC 7807); we surface them as
+ * ApiError.fieldErrors — the rename is intentional, keep both sides aligned.
+ */
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+  // Carry the correlation id onto the typed error so the store can include it in toasts/logs.
   const correlationId = req.headers.get('X-Correlation-Id') ?? undefined;
   return next(req).pipe(
     catchError((err: HttpErrorResponse) =>
@@ -14,7 +18,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   );
 };
 
+/** Maps an Angular HttpErrorResponse into the app's typed ApiError envelope. */
 function toApiError(err: HttpErrorResponse, correlationId: string | undefined): ApiError {
+  // status === 0 means the request never reached the server (offline, CORS, DNS, etc.).
   if (err.status === 0) {
     return {
       kind: 'network',
@@ -25,6 +31,7 @@ function toApiError(err: HttpErrorResponse, correlationId: string | undefined): 
   }
 
   const problem = isProblemDetails(err.error) ? err.error : null;
+  // Prefer the server's `detail` (most specific), then `title`, then HTTP statusText.
   const message =
     problem?.detail ?? problem?.title ?? err.statusText ?? 'Request failed.';
 
@@ -39,6 +46,7 @@ function toApiError(err: HttpErrorResponse, correlationId: string | undefined): 
   };
 }
 
+/** Structural type-guard for RFC 7807 ProblemDetails payloads. */
 function isProblemDetails(value: unknown): value is ProblemDetails {
   return (
     typeof value === 'object' &&
@@ -47,6 +55,7 @@ function isProblemDetails(value: unknown): value is ProblemDetails {
   );
 }
 
+/** Maps HTTP status codes to the app's discriminated-union ApiErrorKind. See requirements.md §7. */
 function classify(status: number): ApiErrorKind {
   if (status === 400) return 'bad-request';
   if (status === 401) return 'unauthorized';
@@ -55,6 +64,6 @@ function classify(status: number): ApiErrorKind {
   if (status === 409) return 'conflict';
   if (status === 422) return 'validation';
   if (status >= 500) return 'server';
-  
+
   return 'unknown';
 }

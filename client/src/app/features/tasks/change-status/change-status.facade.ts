@@ -17,6 +17,7 @@ import { TasksStore } from '../../../state/tasks.store';
 import { ChangeStatusPresenter, StatusOptionView } from './change-status.presenter';
 import { CustomDataFormController } from './custom-data-form.controller';
 
+/** Discriminator for which confirm dialog is currently open inside the change-status modal. */
 export type ActiveConfirmDialog =
   | 'close'
   | 'cancel'
@@ -24,88 +25,119 @@ export type ActiveConfirmDialog =
   | 'forward'
   | 'in-place';
 
-/** Facade for the change-status modal: detail fetch, options, form lifecycle, dirty-guard, submit dispatch. */
+/**
+ * Facade owning all UX orchestration for the change-status modal: detail fetch, status option building,
+ * per-status form lifecycle, dirty-guard, and submit dispatch. Pure derivations (status pill shape, history
+ * prefill) live in `ChangeStatusPresenter`; the dynamic form lifecycle lives in `CustomDataFormController`.
+ */
 @Injectable()
 export class ChangeStatusFacade {
   // ─── Dependencies ────────────────────────────────────────────────────────
+  /** Shared signal-store — owns the cached detail and is the single dispatcher for all mutations. */
   private readonly store = inject(TasksStore);
+  /** Typed form-builder for the non-nullable outer form (target status + next assignee). */
   private readonly fb = inject(NonNullableFormBuilder);
+  /** Used for both opening and closing the modal — both go through `skipLocationChange` navigation (frontend.md §5). */
   private readonly router = inject(Router);
+  /** Surfaces transient success/info toasts; error toasts are handled by `bindStoreErrorToast`. */
   private readonly toasts = inject(ToastService);
+  /** Pure presenter for status pill shapes and history prefill — no signals, no DI of stateful services. */
   private readonly presenter = inject(ChangeStatusPresenter);
+  /** Owns the per-status `FormGroup` rebuilt on every target change; exposed so templates can read its signals. */
   readonly cdf = inject(CustomDataFormController);
 
   // ─── Template constants ──────────────────────────────────────────────────
+  /** Alias used by templates so they don't need a separate inject of TasksStore. */
   readonly storeRef = this.store;
+  /** Shared copy block for the "discard changes?" dialog — kept in one place to keep wording consistent. */
   readonly discard = DISCARD_CHANGES_COPY;
+  /** Tiny state-machine for "which confirm dialog is open" — avoids 5 separate booleans. */
   readonly dialog = new DialogState<ActiveConfirmDialog>();
 
   // ─── Forms ───────────────────────────────────────────────────────────────
+  /** Outer form holds inputs that aren't per-status custom-data: the chosen target status + chosen next assignee. */
   readonly outerForm = this.fb.group({
     targetStatus: this.fb.control<number | null>(null),
     nextAssignedUserId: this.fb.control<number>(0, [Validators.required, Validators.min(1)]),
   });
 
   // ─── Writable Signals ────────────────────────────────────────────────────
+  /** Source of truth for the currently-bound task id; set from the route param via the container's effect. */
   readonly taskId = signal(0);
+  /** Mirror of `outerForm.controls.targetStatus.value`; null = the user is editing the current status in-place. */
   readonly targetStatus = signal<number | null>(null);
+  /** Option the user clicked while the form was dirty — held until they confirm/cancel the discard prompt. */
   readonly pendingStatusSwitch = signal<StatusOptionView | null>(null);
 
   // ─── Observable → Signal Bridges ─────────────────────────────────────────
+  /** Reactive view of the assignee control's value — used to compute `nextAssigneeId`. */
   private readonly nextAssigneeValue = formSignal(this.outerForm.controls.nextAssignedUserId);
+  /** Reactive view of the assignee control's VALID/INVALID/PENDING status — drives the assignee error message. */
   private readonly nextAssigneeStatusSignal = formStatusSignal(
     this.outerForm.controls.nextAssignedUserId,
   );
 
   // ─── Computed ────────────────────────────────────────────────────────────
+  /** The currently-bound TaskDetail (from the store cache) or null while loading / when id is unset. */
   readonly task = computed(() => this.store.detailById()[this.taskId()] ?? null);
+  /** True while the store is fetching this id — drives the modal's skeleton spinner. */
   readonly detailLoading = computed(() => this.store.detailLoadingIds().has(this.taskId()));
 
+  /** Task-type metadata for the current task — drives status options, custom-data fields, and labels. */
   readonly taskType = computed(() => {
     const t = this.task();
     return t ? this.store.taskTypeById().get(t.taskTypeId) ?? null : null;
   });
 
+  /** Resolved assignee user object — drives the avatar + name in the modal header. */
   readonly assignee = computed(() => {
     const t = this.task();
     return t ? this.store.userById().get(t.assignedUserId) ?? null : null;
   });
 
+  /** Short display id (last 4 chars or similar) shown in the modal header — full id is too noisy. */
   readonly shortId = computed(() => {
     const t = this.task();
     return t ? shortenTaskId(t.id) : '';
   });
 
+  /** Humanised "5 minutes ago" string for the updatedAt timestamp. */
   readonly updatedRelative = computed(() => {
     const t = this.task();
     return t ? formatRelativeTime(t.updatedAtUtc) : '';
   });
 
+  /** Absolute ISO-like timestamp used as the `title` tooltip on the relative-time label. */
   readonly updatedAbsolute = computed(() => {
     const t = this.task();
     return t ? formatAbsolute(t.updatedAtUtc) : '';
   });
 
+  /** Human name of the task's current status (e.g. "In review"). Falls back to "Status N" if metadata is missing. */
   readonly currentStatusName = computed(() =>
     this.presenter.statusName(this.task()?.status ?? null, this.taskType()),
   );
 
+  /** Human name of the user-selected target status — used in the toast and confirm-dialog body. */
   readonly targetStatusName = computed(() =>
     this.presenter.statusName(this.targetStatus(), this.taskType()),
   );
 
+  /** True when the user is moving the task to an earlier status — triggers the "backward" confirm dialog variant. */
   readonly targetIsBackward = computed(() => {
     const target = this.targetStatus();
     const task = this.task();
     return target !== null && task !== null && target < task.status;
   });
 
+  /** Status pills the user can click — direction/disabled state derived by the presenter from `WorkflowValidators`. */
   readonly statusOptions = computed<readonly StatusOptionView[]>(() => {
     const task = this.task();
     const type = this.taskType();
     return task && type ? this.presenter.buildStatusOptions(task, type) : [];
   });
 
+  /** Client-side mirror of the server's workflow rules — used to gate submit, not as the source of truth. */
   readonly workflowCheck = computed(() => {
     const task = this.task();
     const type = this.taskType();
@@ -114,19 +146,22 @@ export class ChangeStatusFacade {
     return WorkflowValidators.canChangeStatus(task, target, type);
   });
 
+  /** True iff the close-task button should be enabled — server is authoritative; this is defence-in-depth. */
   readonly canCloseTask = computed(() => {
     const task = this.task();
     const type = this.taskType();
     return !!task && !!type && WorkflowValidators.canClose(task, type).ok;
   });
 
+  /** Currently-selected next-assignee id, or null when the placeholder "0" is still selected. */
   readonly nextAssigneeId = computed<number | null>(() => {
     const v = this.nextAssigneeValue();
     return typeof v === 'number' && v > 0 ? v : null;
   });
 
+  /** Single canonical error message for the assignee field — touched + invalid is the only failure surface. */
   readonly assigneeErrors = computed<readonly string[]>(() => {
-    void this.nextAssigneeStatusSignal();
+    void this.nextAssigneeStatusSignal(); // subscribe so OnPush recomputes when control status flips
     const ctrl = this.outerForm.controls.nextAssignedUserId;
     if (!ctrl.touched || !ctrl.invalid) return [];
     return ['Pick an assignee.'];
@@ -153,6 +188,7 @@ export class ChangeStatusFacade {
 
   // ─── Lifecycle ───────────────────────────────────────────────────────────
   constructor() {
+    // Subscribe to target-status changes here (not in an effect) because we need both the new value and side-effects.
     this.outerForm.controls.targetStatus.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe((value) => {
@@ -160,16 +196,20 @@ export class ChangeStatusFacade {
         this.rebuildCustomDataForm(value);
       });
 
+    // 422 field errors are projected onto the custom-data form by the 4th-arg callback;
+    // 409 recovery is already handled inside `TasksStore.runMutation` — we don't re-handle it here.
     bindStoreErrorToast(this.store, errorTitle, undefined, (err) =>
       this.cdf.applyServerFieldErrors(err),
     );
   }
 
   // ─── Public API / UI Actions ─────────────────────────────────────────────
+  /** Setter called by the container's effect when the `:id` route segment changes. */
   setTaskId(id: number): void {
     this.taskId.set(id);
   }
 
+  /** Status pill click handler. Asks the user to discard before switching targets when the form is dirty. */
   pickStatus(option: StatusOptionView): void {
     if (option.disabled) return;
 
@@ -178,16 +218,19 @@ export class ChangeStatusFacade {
     if (!wantsCurrent && sameAsCurrent) return;
 
     if (this.targetStatus() !== null && this.isDirty()) {
+      // Hold the click — the discard-changes prompt will resolve to commit or cancel.
       this.pendingStatusSwitch.set(option);
       return;
     }
     this.commitTarget(wantsCurrent ? null : option.status);
   }
 
+  /** Updates the next-assignee control from the user-picker; routed through `setControl` for typed safety. */
   pickAssignee(id: number): void {
     setControl(this.outerForm.controls.nextAssignedUserId, id);
   }
 
+  /** User said "yes, discard" in the discard-changes prompt — commit the held target. */
   confirmStatusSwitch(): void {
     const pending = this.pendingStatusSwitch();
     if (!pending) return;
@@ -195,14 +238,17 @@ export class ChangeStatusFacade {
     this.commitTarget(pending.direction === 'current' ? null : pending.status);
   }
 
+  /** User cancelled the discard prompt — drop the held option and keep the current form state. */
   cancelStatusSwitch(): void {
     this.pendingStatusSwitch.set(null);
   }
 
+  /** Opens the "close task?" confirm dialog. Final close happens in `confirmDialog`. */
   requestClose(): void {
     this.dialog.open('close');
   }
 
+  /** Cancel button: prompt if dirty, otherwise route back immediately. */
   requestCancel(): void {
     if (this.isDirty()) {
       this.dialog.open('cancel');
@@ -211,6 +257,7 @@ export class ChangeStatusFacade {
     this.routeBack();
   }
 
+  /** Submit click. Decides which confirm dialog to show: in-place / forward / backward — or no-ops when nothing changed. */
   onSubmitRequest(): void {
     this.outerForm.markAllAsTouched();
     this.cdf.markAllAsTouched();
@@ -239,6 +286,7 @@ export class ChangeStatusFacade {
     this.dialog.open(this.targetIsBackward() ? 'backward' : 'forward');
   }
 
+  /** Confirm-dialog OK handler — dispatches to the right submit/close path based on which dialog was open. */
   async confirmDialog(): Promise<void> {
     const kind = this.dialog.active();
     if (!kind) return;
@@ -260,20 +308,24 @@ export class ChangeStatusFacade {
     }
   }
 
+  /** Confirm-dialog Cancel handler — simply closes the dialog and keeps current form state intact. */
   cancelDialog(): void {
     this.dialog.close();
   }
 
+  /** Closes the modal by routing back to `/tasks` — `skipLocationChange` keeps the URL stable (frontend.md §5). */
   routeBack(): void {
     this.router.navigate(['/tasks'], { skipLocationChange: true });
   }
 
   // ─── Private methods ─────────────────────────────────────────────────────
+  /** Clears the per-status form then commits the new target — rebuilding the form is triggered by valueChanges. */
   private commitTarget(status: number | null): void {
     this.cdf.clear();
     this.outerForm.controls.targetStatus.setValue(status);
   }
 
+  /** Asks the controller to rebuild the form; if history carries an assignee preference, pre-fill the outer control. */
   private rebuildCustomDataForm(target: number | null): void {
     const assigneeFromHistory = this.cdf.rebuild(this.task(), this.taskType(), target);
     if (assigneeFromHistory) {
@@ -282,6 +334,7 @@ export class ChangeStatusFacade {
     }
   }
 
+  /** Performs the forward/backward status change via the store; on success toasts and resets the local form. */
   private async submit(): Promise<void> {
     const task = this.task();
     if (!task) return;
@@ -301,6 +354,7 @@ export class ChangeStatusFacade {
     this.rebuildCustomDataForm(null);
   }
 
+  /** In-place save (same status, different assignee or custom-data). Distinct API call so audit history is preserved. */
   private async submitInPlace(): Promise<void> {
     const task = this.task();
     if (!task) return;
@@ -315,6 +369,7 @@ export class ChangeStatusFacade {
     this.rebuildCustomDataForm(null);
   }
 
+  /** Closes the task — server enforces closed-task immutability; we just toast on success. */
   private async closeTask(): Promise<void> {
     const task = this.task();
     if (!task) return;
@@ -322,12 +377,14 @@ export class ChangeStatusFacade {
     if (result) this.toasts.success('Task marked as closed.', 'Task closed');
   }
 
+  /** Aggregate dirty check across the outer assignee control + the inner per-status form. */
   private isDirty(): boolean {
     if (this.outerForm.controls.nextAssignedUserId.dirty) return true;
     return this.cdf.isDirty();
   }
 }
 
+/** Per-kind toast title: workflow-rule conflicts get their rule name, validation errors get the generic title. */
 function errorTitle(err: ApiError): string {
   if (err.kind === 'conflict') {
     return err.rule && err.rule !== 'concurrent-modification'

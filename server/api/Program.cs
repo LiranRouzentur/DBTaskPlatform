@@ -14,6 +14,8 @@ using TaskPlatform.Data.Workflow;
 // Scoped: AppDbContext/IAppDbContext (built from the factory), TaskService, DatabaseSeeder.
 // Exception handler chain order matters: Concurrency → DbUpdate → Global (most-specific first).
 
+// WebApplicationBuilder seeded from command-line args; configures DI, configuration, and logging
+// before the app is built. This is the canonical entry point for ASP.NET Core minimal hosting.
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -59,15 +61,19 @@ builder.Services.AddScoped<TaskService>();
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
+// The built WebApplication exposes the middleware pipeline + endpoint routing. Built once;
+// no further DI registrations are valid past this point.
 var app = builder.Build();
 
 // Startup order: migrate → seed → preload registry. Registry never refreshes, so adding a task
 // type at runtime requires a restart. SeedExtraTypes=true mounts Marketing as the proof.
 await using (var scope = app.Services.CreateAsyncScope())
 {
+    // Scoped AppDbContext used only for the migrate + seed boot work; disposed when the scope exits.
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
 
+    // Idempotent seeder that fills in users / task types / demo tasks on a fresh database.
     var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
     await seeder.SeedAsync(
         includeMarketing: builder.Configuration.GetValue<bool>("SeedExtraTypes"));

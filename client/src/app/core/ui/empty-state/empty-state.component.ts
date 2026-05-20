@@ -22,8 +22,12 @@ import { IconComponent, IconName } from '../icon/icon.component';
   styleUrl: './empty-state.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/** Standard placeholder shown when a list/section has no items — icon + title + optional body + projected actions. */
 export class EmptyStateComponent {
+  /** Decorative glyph above the title. Defaults to the generic "inbox" — pick a more specific icon when relevant. */
   readonly icon = input<IconName>('inbox');
+  /** Short headline like "No tasks yet". */
   readonly title = input.required<string>();
+  /** Optional supporting copy explaining the empty condition or next step. */
   readonly description = input<string | null>(null);
 }

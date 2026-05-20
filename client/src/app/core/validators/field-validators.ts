@@ -1,8 +1,11 @@
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 
-/** Validator factories mirroring the server's per-spec rules. Keys read by field-error-messages.ts. */
+/** Validator factories mirroring the server's per-spec rules. Keys read by field-error-messages.ts.
+ *  Per frontend rules §4: these are UX hints — `CustomDataParser` on the server is authoritative.
+ *  Length/range validators short-circuit on empty/wrong-type so `required` / `invalidType` aren't double-reported. */
 export const FieldValidators = {
 
+  /** Required + must be a non-blank string. Used as the base validator for every String field. */
   nonEmptyString(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const value = control.value;
@@ -13,6 +16,7 @@ export const FieldValidators = {
     };
   },
 
+  /** Required + must coerce to a finite number. Used as the base validator for every Number field. */
   finiteNumber(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const value = control.value;
@@ -23,6 +27,7 @@ export const FieldValidators = {
     };
   },
 
+  /** Caps string length. Skips non-strings — `nonEmptyString` already reported the type error. */
   stringMaxLength(max: number): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const value = control.value;
@@ -34,11 +39,12 @@ export const FieldValidators = {
     };
   },
 
+  /** Enforces minimum string length. Skips empty so `nonEmptyString` owns the "required" message. */
   stringMinLength(min: number): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const value = control.value;
       if (typeof value !== 'string') return null;
-      
+      // Empty handled by nonEmptyString — bail to avoid stacking two messages on a single control.
       if (value.length === 0) return null;
       if (value.length < min) {
         return { stringMinLength: { required: min, actual: value.length } };
@@ -47,6 +53,7 @@ export const FieldValidators = {
     };
   },
 
+  /** Lower-bound check for numbers; skips empty/non-finite so `finiteNumber` owns those errors. */
   numberMin(min: number): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const value = control.value;
@@ -58,6 +65,7 @@ export const FieldValidators = {
     };
   },
 
+  /** Upper-bound check for numbers; symmetric to numberMin in skip semantics. */
   numberMax(max: number): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const value = control.value;

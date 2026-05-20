@@ -41,14 +41,17 @@ import { TasksStore } from '../../../state/tasks.store';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TopBarComponent {
+  /** Reads totals + active filters; the global single-instance store is shared with all other features. */
   protected readonly store = inject(TasksStore);
 
+  /** Relabels the Tasks count to "Visible tasks" whenever any filter is active, signalling the number isn't a true total. */
   protected readonly tasksLabel = computed(() => {
     const u = this.store.currentUserId();
     const t = this.store.typeFilter();
     if (u === null && t === null) return 'Tasks';
     return 'Visible tasks';
   });
+  /** Tooltip describing which filters are in play — joined with a middle-dot or a generic "all tasks" string. */
   protected readonly tasksTitle = computed(() => {
     const parts: string[] = [];
     const u = this.store.currentUser();

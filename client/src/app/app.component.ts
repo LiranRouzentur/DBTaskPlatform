@@ -3,7 +3,10 @@ import { RouterOutlet } from '@angular/router';
 import { TopBarComponent } from './features/shell/top-bar/top-bar.component';
 import { ToastHostComponent } from './core/ui/toast-host/toast-host.component';
 
-// App shell. Logic-free: composes top bar, router outlet, and the global toast host.
+/**
+ * App shell. Logic-free: composes top bar, router outlet, and the global toast host.
+ * OnPush + standalone per frontend.md §1 — no exceptions.
+ */
 @Component({
   selector: 'app-root',
   standalone: true,
